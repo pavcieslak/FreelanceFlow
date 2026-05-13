@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id               String  @id @default("singleton")
+  fullName         String?
+  businessName     String?
+  email            String?
+  address          String?
+  phone            String?
+  logo             String?
+  defaultCurrency  String  @default("USD")
+  defaultHourlyRate Float  @default(0)
+  passwordHash     String?
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?
+  address   String?
+  currency  String    @default("USD")
+  archived  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  projects  Project[]
+  invoices  Invoice[]
+}
+
+model Project {
+  id                String      @id @default(cuid())
+  name              String
+  color             String      @default("#3b82f6")
+  clientId          String?
+  hourlyRate        Float       @default(0)
+  currency          String      @default("USD")
+  billableByDefault Boolean     @default(true)
+  archived          Boolean     @default(false)
+  createdAt         DateTime    @default(now())
+  client            Client?     @relation(fields: [clientId], references: [id])
+  tasks             Task[]
+  timeEntries       TimeEntry[]
+}
+
+model Task {
+  id          String      @id @default(cuid())
+  name        String
+  projectId   String
+  archived    Boolean     @default(false)
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+}
+
+model Tag {
+  id          String         @id @default(cuid())
+  name        String         @unique
+  timeEntries TimeEntryTag[]
+}
+
+model TimeEntry {
+  id           String         @id @default(cuid())
+  description  String?
+  projectId    String?
+  taskId       String?
+  startTime    DateTime
+  endTime      DateTime?
+  duration     Int?
+  billable     Boolean        @default(true)
+  invoiced     Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  project      Project?       @relation(fields: [projectId], references: [id])
+  task         Task?          @relation(fields: [taskId], references: [id])
+  tags         TimeEntryTag[]
+  invoiceItems InvoiceItem[]
+}
+
+model TimeEntryTag {
+  timeEntryId String
+  tagId       String
+  timeEntry   TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([timeEntryId, tagId])
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  number    String        @unique
+  clientId  String
+  status    String        @default("DRAFT")
+  issueDate DateTime      @default(now())
+  dueDate   DateTime
+  subject   String?
+  notes     String?
+  currency  String        @default("USD")
+  taxRate   Float         @default(0)
+  createdAt DateTime      @default(now())
+  client    Client        @relation(fields: [clientId], references: [id])
+  items     InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String     @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Float
+  unitPrice   Float
+  amount      Float
+  timeEntryId String?
+  invoice     Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  timeEntry   TimeEntry? @relation(fields: [timeEntryId], references: [id])
+}
