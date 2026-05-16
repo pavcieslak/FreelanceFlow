@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  TrendingUp,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { label: "Tags", icon: Tag, href: "/tags" },
   { label: "Reports", icon: BarChart2, href: "/reports" },
   { label: "Invoices", icon: FileText, href: "/invoices" },
+  { label: "Runway", icon: TrendingUp, href: "/runway" },
 ];
 
 export default function Sidebar() {

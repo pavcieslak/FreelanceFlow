@@ -24,6 +24,7 @@ export default function SettingsPage() {
   // Defaults
   const [defaultCurrency, setDefaultCurrency] = useState("USD");
   const [defaultHourlyRate, setDefaultHourlyRate] = useState("0");
+  const [monthlyExpenses, setMonthlyExpenses] = useState("0");
   const [savingDefaults, setSavingDefaults] = useState(false);
   const [defaultsMsg, setDefaultsMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -47,6 +48,7 @@ export default function SettingsPage() {
         setLogo(s.logo ?? null);
         setDefaultCurrency(s.defaultCurrency ?? "USD");
         setDefaultHourlyRate(String(s.defaultHourlyRate ?? 0));
+        setMonthlyExpenses(String(s.monthlyExpenses ?? 0));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -86,7 +88,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ defaultCurrency, defaultHourlyRate: parseFloat(defaultHourlyRate) || 0 }),
+        body: JSON.stringify({ defaultCurrency, defaultHourlyRate: parseFloat(defaultHourlyRate) || 0, monthlyExpenses: parseFloat(monthlyExpenses) || 0 }),
       });
       if (res.ok) {
         setDefaultsMsg({ type: "success", text: "Defaults saved." });
@@ -220,6 +222,10 @@ export default function SettingsPage() {
           </Field>
           <Field label="Default Hourly Rate">
             <input type="number" value={defaultHourlyRate} onChange={(e) => setDefaultHourlyRate(e.target.value)} min="0" step="0.01" className={inputClass} />
+          </Field>
+          <Field label="Monthly Expenses">
+            <input type="number" value={monthlyExpenses} onChange={(e) => setMonthlyExpenses(e.target.value)} min="0" step="0.01" className={inputClass} placeholder="0" />
+            <p className="text-xs text-text-muted mt-1">Used to calculate your financial runway.</p>
           </Field>
           <Msg msg={defaultsMsg} />
           <Button onClick={saveDefaults} loading={savingDefaults}>Save Defaults</Button>

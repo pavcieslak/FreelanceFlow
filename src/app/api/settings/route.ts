@@ -43,6 +43,7 @@ export async function PUT(req: NextRequest) {
       ...(body.logo !== undefined && { logo: body.logo || null }),
       ...(body.defaultCurrency !== undefined && { defaultCurrency: body.defaultCurrency }),
       ...(body.defaultHourlyRate !== undefined && { defaultHourlyRate: body.defaultHourlyRate }),
+      ...(body.monthlyExpenses !== undefined && { monthlyExpenses: body.monthlyExpenses }),
     },
     create: {
       id: "singleton",
@@ -54,6 +55,7 @@ export async function PUT(req: NextRequest) {
       logo: body.logo || null,
       defaultCurrency: body.defaultCurrency || "USD",
       defaultHourlyRate: body.defaultHourlyRate ?? 0,
+      monthlyExpenses: body.monthlyExpenses ?? 0,
     },
   });
 
