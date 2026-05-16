@@ -15,6 +15,7 @@ import {
   ChevronRight,
   LogOut,
   TrendingUp,
+  Target,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: "Tags", icon: Tag, href: "/tags" },
   { label: "Reports", icon: BarChart2, href: "/reports" },
   { label: "Invoices", icon: FileText, href: "/invoices" },
+  { label: "Profitability", icon: Target, href: "/profitability" },
   { label: "Runway", icon: TrendingUp, href: "/runway" },
 ];
 
