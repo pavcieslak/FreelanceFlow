@@ -68,6 +68,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Un-mark any linked time entries so they can be re-invoiced
+  const items = await prisma.invoiceItem.findMany({
+    where: { invoiceId: params.id, timeEntryId: { not: null } },
+    select: { timeEntryId: true },
+  });
+  const entryIds = items.map((i) => i.timeEntryId!);
+  if (entryIds.length) {
+    await prisma.timeEntry.updateMany({
+      where: { id: { in: entryIds } },
+      data: { invoiced: false },
+    });
+  }
+
   await prisma.invoice.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true });
 }

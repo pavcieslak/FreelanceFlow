@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
   else if (period === "3months") startDate = startOfMonth(subMonths(now, 2));
   else if (period === "year") startDate = startOfYear(now);
 
+  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+  const defaultCurrency = settings?.defaultCurrency ?? "USD";
+
   const projects = await prisma.project.findMany({
     where: { archived: false },
     include: { client: true },
@@ -127,6 +130,7 @@ export async function GET(req: NextRequest) {
     period,
     projects: rows,
     summary: {
+      currency: defaultCurrency,
       totalDuration: summaryTracked,
       billableDuration: summaryBillable,
       totalEarned: summaryEarned,
