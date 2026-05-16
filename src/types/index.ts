@@ -14,6 +14,7 @@ export interface Settings {
   logo: string | null;
   defaultCurrency: string;
   defaultHourlyRate: number;
+  monthlyExpenses: number;
 }
 
 export interface Client {

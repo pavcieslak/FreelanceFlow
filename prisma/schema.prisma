@@ -22,9 +22,10 @@ model Settings {
   address          String?
   phone            String?
   logo             String?
-  defaultCurrency  String  @default("USD")
-  defaultHourlyRate Float  @default(0)
-  passwordHash     String?
+  defaultCurrency   String  @default("USD")
+  defaultHourlyRate Float   @default(0)
+  monthlyExpenses   Float   @default(0)
+  passwordHash      String?
 }
 
 model Client {
