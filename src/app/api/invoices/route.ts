@@ -8,10 +8,16 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const status = req.nextUrl.searchParams.get("status");
+  const sort = req.nextUrl.searchParams.get("sort");
+  const orderBy =
+    sort === "dueDate_desc"
+      ? [{ dueDate: "desc" as const }, { createdAt: "desc" as const }]
+      : [{ issueDate: "desc" as const }, { createdAt: "desc" as const }];
+
   const invoices = await prisma.invoice.findMany({
     where: status ? { status } : undefined,
     include: { client: true, items: true },
-    orderBy: { createdAt: "desc" },
+    orderBy,
   });
   return NextResponse.json(invoices);
 }

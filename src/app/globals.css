@@ -3,17 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f0f1a;
-  --surface: #1a1a2e;
-  --surface-elevated: #16213e;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --text-primary: #f1f5f9;
-  --text-muted: #94a3b8;
-  --border: #1e293b;
+  --background: #111318;
+  --surface: #1b1f27;
+  --surface-elevated: #222733;
+  --accent: #90caf9;
+  --accent-hover: #b3e0ff;
+  --danger: #ff8a80;
+  --success: #81c784;
+  --warning: #ffcc80;
+  --text-primary: #eef2f8;
+  --text-muted: #b3bbc9;
+  --border: #303747;
 }
 
 * {
@@ -24,8 +24,13 @@ html,
 body {
   background-color: var(--background);
   color: var(--text-primary);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: "Roboto", "Noto Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image: radial-gradient(circle at 8% 8%, rgba(144, 202, 249, 0.08), transparent 35%),
+    radial-gradient(circle at 92% 100%, rgba(130, 177, 255, 0.08), transparent 40%);
 }
 
 /* Custom scrollbar */

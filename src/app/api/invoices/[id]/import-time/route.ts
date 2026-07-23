@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const entries = await prisma.timeEntry.findMany({
-    where: { id: { in: entryIds } },
+    where: { id: { in: entryIds }, isPlanned: false },
     include: { project: true },
   });
 

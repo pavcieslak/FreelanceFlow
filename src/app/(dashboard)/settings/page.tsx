@@ -6,6 +6,40 @@ import Button from "@/components/ui/Button";
 import { Settings } from "@/types";
 import { CURRENCIES, cn } from "@/lib/utils";
 
+type InlineMessage = { type: "success" | "error"; text: string } | null;
+
+function Msg({ msg }: { msg: InlineMessage }) {
+  if (!msg) return null;
+  return (
+    <p className={cn("text-sm px-3 py-2 rounded border",
+      msg.type === "success"
+        ? "bg-success/10 border-success/30 text-success"
+        : "bg-danger/10 border-danger/30 text-danger")}>
+      {msg.text}
+    </p>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-surface border border-border rounded-lg overflow-hidden">
+      <div className="px-5 py-3 border-b border-border">
+        <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-sm font-medium text-text-muted">{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +52,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [logo, setLogo] = useState<string | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
-  const [detailsMsg, setDetailsMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [detailsMsg, setDetailsMsg] = useState<InlineMessage>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Defaults
@@ -26,14 +60,14 @@ export default function SettingsPage() {
   const [defaultHourlyRate, setDefaultHourlyRate] = useState("0");
   const [monthlyExpenses, setMonthlyExpenses] = useState("0");
   const [savingDefaults, setSavingDefaults] = useState(false);
-  const [defaultsMsg, setDefaultsMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [defaultsMsg, setDefaultsMsg] = useState<InlineMessage>(null);
 
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPwd, setSavingPwd] = useState(false);
-  const [pwdMsg, setPwdMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [pwdMsg, setPwdMsg] = useState<InlineMessage>(null);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -132,38 +166,6 @@ export default function SettingsPage() {
     } finally {
       setSavingPwd(false);
     }
-  }
-
-  function Msg({ msg }: { msg: { type: "success" | "error"; text: string } | null }) {
-    if (!msg) return null;
-    return (
-      <p className={cn("text-sm px-3 py-2 rounded border",
-        msg.type === "success"
-          ? "bg-success/10 border-success/30 text-success"
-          : "bg-danger/10 border-danger/30 text-danger")}>
-        {msg.text}
-      </p>
-    );
-  }
-
-  function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-      <div className="bg-surface border border-border rounded-lg overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
-        </div>
-        <div className="p-5 space-y-4">{children}</div>
-      </div>
-    );
-  }
-
-  function Field({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div className="space-y-1">
-        <label className="block text-sm font-medium text-text-muted">{label}</label>
-        {children}
-      </div>
-    );
   }
 
   const inputClass = "w-full bg-surface-elevated border border-border rounded px-3 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent text-sm transition-colors";

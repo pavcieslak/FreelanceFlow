@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import TimerBar from "@/components/tracker/TimerBar";
 import TimeEntryList from "@/components/tracker/TimeEntryList";
 import EditEntryModal from "@/components/tracker/EditEntryModal";
+import TrackerCalendar from "@/components/tracker/TrackerCalendar";
 import { TimeEntry, Project, Tag } from "@/types";
 
 export default function TrackerPage() {
@@ -62,6 +63,7 @@ export default function TrackerPage() {
         tags={tags}
         onEntryCreated={() => loadEntries(true)}
       />
+      <TrackerCalendar projects={projects} onBookingCreated={() => loadEntries(true)} />
       <div className="flex-1 overflow-y-auto">
         <TimeEntryList
           entries={entries}

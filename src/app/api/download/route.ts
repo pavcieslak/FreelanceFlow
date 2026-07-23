@@ -3,11 +3,11 @@ import { readFileSync } from "fs";
 
 export async function GET() {
   try {
-    const file = readFileSync("/tmp/freelanceflow.zip");
+    const file = readFileSync("/tmp/projectflow.zip");
     return new NextResponse(file, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": 'attachment; filename="freelanceflow.zip"',
+        "Content-Disposition": 'attachment; filename="projectflow.zip"',
         "Content-Length": String(file.length),
       },
     });

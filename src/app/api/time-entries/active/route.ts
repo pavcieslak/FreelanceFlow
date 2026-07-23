@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const entry = await prisma.timeEntry.findFirst({
-    where: { endTime: null },
+    where: { endTime: null, isPlanned: false },
     include: {
       project: { include: { client: true } },
       task: true,

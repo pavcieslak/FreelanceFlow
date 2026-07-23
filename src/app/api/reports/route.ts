@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const clientIds = sp.getAll("clientId");
   const billable = sp.get("billable");
 
-  const where: Record<string, unknown> = { endTime: { not: null } };
+  const where: Record<string, unknown> = { endTime: { not: null }, isPlanned: false };
   if (startDate || endDate) {
     where.startTime = {
       ...(startDate && { gte: new Date(startDate) }),

@@ -20,6 +20,7 @@ export async function GET() {
   const currentMonthEntries = await prisma.timeEntry.findMany({
     where: {
       billable: true,
+      isPlanned: false,
       endTime: { not: null },
       startTime: { gte: currentMonthStart, lte: currentMonthEnd },
     },
@@ -41,6 +42,7 @@ export async function GET() {
       const entries = await prisma.timeEntry.findMany({
         where: {
           billable: true,
+          isPlanned: false,
           endTime: { not: null },
           startTime: { gte: start, lte: end },
         },
@@ -82,6 +84,7 @@ export async function GET() {
       const entries = await prisma.timeEntry.findMany({
         where: {
           billable: true,
+          isPlanned: false,
           endTime: { not: null },
           startTime: { gte: start, lte: end },
         },

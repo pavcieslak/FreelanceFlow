@@ -15,6 +15,8 @@ interface Props {
 
 export default function TimeEntryItem({ entry, onEdit, onDelete, onRestart }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const modeLabel =
+    entry.mode === "HALF_DAY" ? "Half-day" : entry.mode === "FULL_DAY" ? "Full-day" : null;
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-surface-elevated transition-colors group">
@@ -34,6 +36,12 @@ export default function TimeEntryItem({ entry, onEdit, onDelete, onRestart }: Pr
           {entry.tags?.map(({ tag }) => (
             <Badge key={tag.id} variant="default" className="text-xs">{tag.name}</Badge>
           ))}
+          {modeLabel && (
+            <Badge variant="info" className="text-xs">{modeLabel}</Badge>
+          )}
+          {entry.isPlanned && (
+            <Badge variant="warning" className="text-xs">Planned</Badge>
+          )}
         </div>
       </div>
 

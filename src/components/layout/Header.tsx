@@ -16,11 +16,11 @@ export default function Header() {
   const pathname = usePathname();
   const title =
     Object.entries(PAGE_TITLES).find(([key]) => pathname.startsWith(key))?.[1] ??
-    "FreelanceFlow";
+    "ProjectFlow";
 
   return (
     <header className="md:hidden sticky top-0 z-40 bg-surface border-b border-border px-4 h-14 flex items-center justify-between">
-      <span className="font-bold text-text-primary text-lg">FreelanceFlow</span>
+      <span className="font-bold text-text-primary text-lg">ProjectFlow</span>
       <span className="text-text-muted text-sm">{title}</span>
     </header>
   );

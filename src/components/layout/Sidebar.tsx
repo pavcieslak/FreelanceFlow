@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Clock,
   FolderOpen,
@@ -33,27 +33,37 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    for (const item of NAV_ITEMS) {
+      router.prefetch(item.href);
+    }
+    router.prefetch("/settings");
+  }, [router]);
+
+  useEffect(() => {
+    setPendingPath(null);
+  }, [pathname]);
 
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col bg-surface border-r border-border transition-all duration-300 shrink-0",
+        "hidden md:flex flex-col bg-surface/95 backdrop-blur border-r border-border transition-all duration-200 shrink-0",
         collapsed ? "w-16" : "w-60"
       )}
     >
       <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
         {!collapsed && (
           <span className="font-bold text-text-primary text-lg tracking-tight">
-            FreelanceFlow
+            ProjectFlow
           </span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            "p-1.5 rounded hover:bg-surface-elevated text-text-muted hover:text-text-primary transition-colors",
-            collapsed && "mx-auto"
-          )}
+          className={cn("p-1.5 rounded-full hover:bg-surface-elevated text-text-muted hover:text-text-primary transition-colors", collapsed && "mx-auto")}
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -61,16 +71,19 @@ export default function Sidebar() {
 
       <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
         {NAV_ITEMS.map(({ label, icon: Icon, href }) => {
-          const active = pathname.startsWith(href);
+          const activePath = pendingPath ?? pathname;
+          const active = activePath.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
+              prefetch
+              onClick={() => setPendingPath(href)}
               title={collapsed ? label : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded transition-colors text-sm font-medium",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium",
                 active
-                  ? "bg-accent/10 text-accent"
+                  ? "bg-accent/20 text-accent"
                   : "text-text-muted hover:bg-surface-elevated hover:text-text-primary",
                 collapsed && "justify-center px-2"
               )}
@@ -85,11 +98,13 @@ export default function Sidebar() {
       <div className="border-t border-border p-2 space-y-1">
         <Link
           href="/settings"
+          prefetch
+          onClick={() => setPendingPath("/settings")}
           title={collapsed ? "Settings" : undefined}
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded transition-colors text-sm font-medium",
-            pathname.startsWith("/settings")
-              ? "bg-accent/10 text-accent"
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium",
+            (pendingPath ?? pathname).startsWith("/settings")
+              ? "bg-accent/20 text-accent"
               : "text-text-muted hover:bg-surface-elevated hover:text-text-primary",
             collapsed && "justify-center px-2"
           )}
@@ -102,7 +117,7 @@ export default function Sidebar() {
           onClick={() => signOut({ callbackUrl: "/login" })}
           title={collapsed ? "Sign out" : undefined}
           className={cn(
-            "w-full flex items-center gap-3 px-3 py-2.5 rounded transition-colors text-sm font-medium text-text-muted hover:bg-surface-elevated hover:text-danger",
+            "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-text-muted hover:bg-surface-elevated hover:text-danger",
             collapsed && "justify-center px-2"
           )}
         >

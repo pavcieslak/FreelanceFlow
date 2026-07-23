@@ -30,6 +30,7 @@ model Settings {
 
 model Client {
   id        String    @id @default(cuid())
+  clockifyClientId String? @unique
   name      String
   email     String?
   address   String?
@@ -75,6 +76,8 @@ model TimeEntry {
   description  String?
   projectId    String?
   taskId       String?
+  mode         String         @default("TIMER")
+  isPlanned    Boolean        @default(false)
   startTime    DateTime
   endTime      DateTime?
   duration     Int?
@@ -98,6 +101,7 @@ model TimeEntryTag {
 
 model Invoice {
   id        String        @id @default(cuid())
+  clockifyInvoiceId String? @unique
   number    String        @unique
   clientId  String
   status    String        @default("DRAFT")
@@ -107,6 +111,8 @@ model Invoice {
   notes     String?
   currency  String        @default("USD")
   taxRate   Float         @default(0)
+  paidAmount Float        @default(0)
+  balanceAmount Float     @default(0)
   createdAt DateTime      @default(now())
   client    Client        @relation(fields: [clientId], references: [id])
   items     InvoiceItem[]

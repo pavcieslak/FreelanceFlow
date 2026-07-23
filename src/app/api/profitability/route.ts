@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
 
   const entries = await prisma.timeEntry.findMany({
     where: {
+      isPlanned: false,
       endTime: { not: null },
       ...(startDate && { startTime: { gte: startDate } }),
     },

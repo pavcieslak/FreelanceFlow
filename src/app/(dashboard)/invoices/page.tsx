@@ -13,6 +13,7 @@ import { formatCurrency, formatDateShort, CURRENCIES, cn } from "@/lib/utils";
 import { SkeletonList } from "@/components/ui/Skeleton";
 
 type StatusFilter = "ALL" | "DRAFT" | "SENT" | "PAID";
+type DateSort = "ISSUE_DATE_DESC" | "DUE_DATE_DESC";
 
 function statusBadge(status: string) {
   if (status === "PAID") return <Badge variant="success">Paid</Badge>;
@@ -30,6 +31,7 @@ export default function InvoicesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>("ALL");
+  const [dateSort, setDateSort] = useState<DateSort>("ISSUE_DATE_DESC");
   const [newOpen, setNewOpen] = useState(false);
   const [newClientId, setNewClientId] = useState("");
   const [newDueDate, setNewDueDate] = useState(() => {
@@ -42,8 +44,13 @@ export default function InvoicesPage() {
   async function load() {
     setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (filter !== "ALL") params.set("status", filter);
+      params.set("sort", dateSort === "DUE_DATE_DESC" ? "dueDate_desc" : "issueDate_desc");
+      const invoicesUrl = `/api/invoices${params.toString() ? `?${params.toString()}` : ""}`;
+
       const [inv, cl] = await Promise.all([
-        fetch(filter !== "ALL" ? `/api/invoices?status=${filter}` : "/api/invoices").then((r) => r.json()),
+        fetch(invoicesUrl).then((r) => r.json()),
         fetch("/api/clients?archived=false").then((r) => r.json()),
       ]);
       setInvoices(inv);
@@ -53,7 +60,7 @@ export default function InvoicesPage() {
     }
   }
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { load(); }, [filter, dateSort]);
 
   async function createInvoice() {
     if (!newClientId || !newDueDate) return;
@@ -90,14 +97,28 @@ export default function InvoicesPage() {
       }
     >
       {/* Status filter tabs */}
-      <div className="flex border-b border-border mb-4 -mt-1">
-        {TABS.map((tab) => (
-          <button key={tab} onClick={() => setFilter(tab)}
-            className={cn("px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize",
-              filter === tab ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text-primary")}>
-            {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
-          </button>
-        ))}
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4 -mt-1">
+        <div className="flex border-b border-border">
+          {TABS.map((tab) => (
+            <button key={tab} onClick={() => setFilter(tab)}
+              className={cn("px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize",
+                filter === tab ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text-primary")}>
+              {tab === "ALL" ? "All" : tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="invoice-date-sort" className="text-sm text-text-muted">Sort by</label>
+          <select
+            id="invoice-date-sort"
+            value={dateSort}
+            onChange={(e) => setDateSort(e.target.value as DateSort)}
+            className="bg-surface-elevated border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="ISSUE_DATE_DESC">Issue date (latest first)</option>
+            <option value="DUE_DATE_DESC">Due date (latest first)</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (

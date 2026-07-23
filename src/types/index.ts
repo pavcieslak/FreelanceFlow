@@ -19,6 +19,7 @@ export interface Settings {
 
 export interface Client {
   id: string;
+  clockifyClientId?: string | null;
   name: string;
   email: string | null;
   address: string | null;
@@ -59,6 +60,8 @@ export interface TimeEntry {
   description: string | null;
   projectId: string | null;
   taskId: string | null;
+  mode: "TIMER" | "HALF_DAY" | "FULL_DAY";
+  isPlanned: boolean;
   startTime: string;
   endTime: string | null;
   duration: number | null;
@@ -72,6 +75,7 @@ export interface TimeEntry {
 
 export interface Invoice {
   id: string;
+  clockifyInvoiceId?: string | null;
   number: string;
   clientId: string;
   status: "DRAFT" | "SENT" | "PAID";
@@ -81,6 +85,8 @@ export interface Invoice {
   notes: string | null;
   currency: string;
   taxRate: number;
+  paidAmount?: number;
+  balanceAmount?: number;
   createdAt: string;
   client?: Client;
   items?: InvoiceItem[];
