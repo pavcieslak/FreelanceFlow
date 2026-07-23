@@ -21,6 +21,14 @@ import {
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0";
+const GIT_SHA = process.env.NEXT_PUBLIC_GIT_SHA ?? "dev";
+const BUILD_TIME = process.env.NEXT_PUBLIC_BUILD_TIME;
+
+const BUILD_TITLE = `Version v${APP_VERSION} · commit ${GIT_SHA}${
+  BUILD_TIME ? ` · built ${new Date(BUILD_TIME).toLocaleString()}` : ""
+}`;
+
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Tracker", icon: Clock, href: "/tracker" },
@@ -126,6 +134,16 @@ export default function Sidebar() {
           <LogOut size={18} className="shrink-0" />
           {!collapsed && <span>Sign out</span>}
         </button>
+
+        <div
+          title={BUILD_TITLE}
+          className={cn(
+            "px-3 pt-1.5 text-[10px] leading-tight text-text-muted/60 select-none",
+            collapsed ? "text-center" : "truncate"
+          )}
+        >
+          {collapsed ? GIT_SHA.slice(0, 4) : `v${APP_VERSION} · ${GIT_SHA}`}
+        </div>
       </div>
     </aside>
   );
