@@ -37,6 +37,30 @@ npm run dev
 Create your account at `/register`, or seed one with
 `AUTH_EMAIL`/`AUTH_PASSWORD` set and `npm run db:seed`.
 
+## Migrating data from the old single-tenant SQLite version
+
+Versions before the multi-tenant/Postgres switch stored everything in a local
+SQLite file (`prisma/dev.db` by default, or `prisma/prisma/dev.db` on very old
+checkouts). That file is untouched by the Postgres migration — it just isn't
+wired up anymore. To pull clients, projects, time entries and invoices from it
+into your new account:
+
+```bash
+# 1. Register your account at /register first (or via db:seed) so it exists
+#    in the new database — the import attaches everything to it.
+
+# 2. Point at the old file and your account, then run the importer.
+#    Run this from the SAME environment where prisma/dev.db actually lives
+#    (e.g. inside the Codespace that used to run the old version).
+MIGRATE_USER_EMAIL=you@example.com \
+SQLITE_PATH=./prisma/dev.db \
+npm run db:migrate-from-sqlite
+```
+
+It prints a summary of how many rows were imported per table. Every row keeps
+its original id, so it's safe to re-run — already-imported rows are skipped,
+nothing gets duplicated.
+
 ## Optional integrations
 
 | Feature | Env vars |
