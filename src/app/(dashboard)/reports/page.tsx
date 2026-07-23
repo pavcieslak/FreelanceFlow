@@ -238,7 +238,17 @@ export default function ReportsPage() {
             </div>
             <div className="bg-surface border border-border rounded-lg p-4">
               <p className="text-text-muted text-sm">Billable Amount</p>
-              <p className="text-2xl font-bold text-accent mt-1">{formatCurrency(data.totalAmount)}</p>
+              {Object.keys(data.currencyTotals).length === 0 ? (
+                <p className="text-2xl font-bold text-accent mt-1">{formatCurrency(0)}</p>
+              ) : (
+                <div className="mt-1 space-y-0.5">
+                  {Object.entries(data.currencyTotals).map(([currency, amount]) => (
+                    <p key={currency} className="text-2xl font-bold text-accent">
+                      {formatCurrency(amount, currency)}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

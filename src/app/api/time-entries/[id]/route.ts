@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, notFound } from "@/lib/session";
 
 type TimeEntryMode = "TIMER" | "HALF_DAY" | "FULL_DAY";
 
@@ -10,29 +10,33 @@ function getSlotDuration(mode: TimeEntryMode) {
   return null;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  const entry = await prisma.timeEntry.findUnique({
-    where: { id: params.id },
+  const entry = await prisma.timeEntry.findFirst({
+    where: { id: id, userId },
     include: {
       project: { include: { client: true } },
       task: true,
       tags: { include: { tag: true } },
     },
   });
-  if (!entry) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!entry) return notFound();
   return NextResponse.json(entry);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
-  const existing = await prisma.timeEntry.findUnique({ where: { id: params.id } });
-  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const existing = await prisma.timeEntry.findFirst({
+    where: { id: id, userId },
+  });
+  if (!existing) return notFound();
 
   const mode: TimeEntryMode = body.mode ?? existing.mode;
   const isPlanned: boolean = body.isPlanned ?? existing.isPlanned;
@@ -67,10 +71,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Duration must be greater than zero" }, { status: 400 });
   }
 
+  if (body.projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: body.projectId, userId },
+    });
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 400 });
+    }
+  }
+
   if (isPlanned && endTime) {
     const overlap = await prisma.timeEntry.findFirst({
       where: {
-        id: { not: params.id },
+        userId,
+        id: { not: id },
         isPlanned: true,
         startTime: { lt: endTime },
         endTime: { gt: startTime },
@@ -84,13 +98,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
+  const tagIds: string[] | undefined = body.tagIds;
+  if (tagIds !== undefined && tagIds.length) {
+    const owned = await prisma.tag.count({ where: { id: { in: tagIds }, userId } });
+    if (owned !== tagIds.length) {
+      return NextResponse.json({ error: "Tag not found" }, { status: 400 });
+    }
+  }
+
   // Delete existing tags and recreate
-  if (body.tagIds !== undefined) {
-    await prisma.timeEntryTag.deleteMany({ where: { timeEntryId: params.id } });
+  if (tagIds !== undefined) {
+    await prisma.timeEntryTag.deleteMany({ where: { timeEntryId: id } });
   }
 
   const entry = await prisma.timeEntry.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       ...(body.description !== undefined && { description: body.description || null }),
       ...(body.projectId !== undefined && { projectId: body.projectId || null }),
@@ -102,8 +124,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       isPlanned,
       ...(body.billable !== undefined && { billable: body.billable }),
       ...(body.invoiced !== undefined && { invoiced: body.invoiced }),
-      ...(body.tagIds !== undefined && body.tagIds.length > 0 && {
-        tags: { create: body.tagIds.map((tagId: string) => ({ tagId })) },
+      ...(tagIds !== undefined && tagIds.length > 0 && {
+        tags: { create: tagIds.map((tagId: string) => ({ tagId })) },
       }),
     },
     include: {
@@ -116,10 +138,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(entry);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  await prisma.timeEntry.delete({ where: { id: params.id } });
+  const existing = await prisma.timeEntry.findFirst({
+    where: { id: id, userId },
+  });
+  if (!existing) return notFound();
+
+  await prisma.timeEntry.delete({ where: { id: id } });
   return NextResponse.json({ success: true });
 }

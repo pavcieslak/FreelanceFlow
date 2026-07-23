@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 
 type TimeEntryMode = "TIMER" | "HALF_DAY" | "FULL_DAY";
 
@@ -32,12 +32,12 @@ function normalizeEndTime(mode: TimeEntryMode, startTime: Date, endTime: Date | 
 }
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const sp = req.nextUrl.searchParams;
-  const page = parseInt(sp.get("page") ?? "1");
-  const limit = parseInt(sp.get("limit") ?? "50");
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(sp.get("limit") ?? "50") || 50));
   const projectId = sp.get("projectId");
   const startDate = sp.get("startDate");
   const endDate = sp.get("endDate");
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const invoiced = sp.get("invoiced");
   const planned = sp.get("planned");
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { userId };
 
   if (planned === "true") {
     where.isPlanned = true;
@@ -85,8 +85,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
   const mode: TimeEntryMode = body.mode ?? "TIMER";
@@ -100,10 +100,19 @@ export async function POST(req: NextRequest) {
   );
   const duration = normalizeDuration(mode, startTime, normalizedEndTime, body.duration);
 
+  if (body.projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: body.projectId, userId },
+    });
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 400 });
+    }
+  }
+
   // Stop any active timer first
   if (!isPlanned && mode === "TIMER" && !normalizedEndTime) {
     const active = await prisma.timeEntry.findFirst({
-      where: { endTime: null, isPlanned: false },
+      where: { userId, endTime: null, isPlanned: false },
     });
     if (active) {
       const endTime = new Date();
@@ -133,6 +142,7 @@ export async function POST(req: NextRequest) {
   if (isPlanned) {
     const overlap = await prisma.timeEntry.findFirst({
       where: {
+        userId,
         isPlanned: true,
         startTime: { lt: normalizedEndTime ?? startTime },
         endTime: { gt: startTime },
@@ -147,9 +157,16 @@ export async function POST(req: NextRequest) {
   }
 
   const tagIds: string[] = body.tagIds ?? [];
+  if (tagIds.length) {
+    const owned = await prisma.tag.count({ where: { id: { in: tagIds }, userId } });
+    if (owned !== tagIds.length) {
+      return NextResponse.json({ error: "Tag not found" }, { status: 400 });
+    }
+  }
 
   const entry = await prisma.timeEntry.create({
     data: {
+      userId,
       description: body.description || null,
       projectId: body.projectId || null,
       taskId: body.taskId || null,

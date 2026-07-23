@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const tags = await prisma.tag.findMany({
+    where: { userId },
     orderBy: { name: "asc" },
     include: { _count: { select: { timeEntries: true } } },
   });
@@ -14,8 +15,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
   if (!body.name?.trim()) {
@@ -23,7 +24,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const tag = await prisma.tag.create({ data: { name: body.name.trim() } });
+    const tag = await prisma.tag.create({
+      data: { userId, name: body.name.trim() },
+    });
     return NextResponse.json(tag, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Tag name already exists" }, { status: 400 });

@@ -1,26 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, notFound } from "@/lib/session";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  const project = await prisma.project.findUnique({
-    where: { id: params.id },
+  const project = await prisma.project.findFirst({
+    where: { id: id, userId },
     include: { client: true, tasks: { where: { archived: false }, orderBy: { id: "asc" } } },
   });
-  if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!project) return notFound();
   return NextResponse.json(project);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
+  const existing = await prisma.project.findFirst({ where: { id: id, userId } });
+  if (!existing) return notFound();
 
   const body = await req.json();
+
+  if (body.clientId) {
+    const client = await prisma.client.findFirst({
+      where: { id: body.clientId, userId },
+    });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 400 });
+    }
+  }
+
   const project = await prisma.project.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       ...(body.name !== undefined && { name: body.name.trim() }),
       ...(body.color !== undefined && { color: body.color }),
@@ -35,10 +50,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(project);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  await prisma.project.delete({ where: { id: params.id } });
+  const existing = await prisma.project.findFirst({ where: { id: id, userId } });
+  if (!existing) return notFound();
+
+  await prisma.project.delete({ where: { id: id } });
   return NextResponse.json({ success: true });
 }

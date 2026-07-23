@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
   LogOut,
   TrendingUp,
   Target,
@@ -21,6 +22,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Tracker", icon: Clock, href: "/tracker" },
   { label: "Projects", icon: FolderOpen, href: "/projects" },
   { label: "Clients", icon: Users, href: "/clients" },

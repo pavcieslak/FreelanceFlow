@@ -115,7 +115,7 @@ export default function RunwayPage() {
   if (loading) {
     return (
       <PageShell title="Runway">
-        <div className="space-y-4 max-w-3xl animate-pulse">
+        <div className="space-y-4 w-full animate-pulse">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-28 bg-surface border border-border rounded-lg" />
           ))}
@@ -131,7 +131,7 @@ export default function RunwayPage() {
 
   return (
     <PageShell title="Runway">
-      <div className="max-w-3xl space-y-6">
+      <div className="w-full space-y-6">
 
         {noExpenses && (
           <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">

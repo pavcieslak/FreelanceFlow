@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
@@ -15,7 +16,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email: (credentials.email as string).toLowerCase().trim() },
         });
 
         if (!user) return null;
@@ -27,7 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isValid) return null;
 
-        return { id: user.id, email: user.email };
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],
@@ -37,10 +38,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isLoginPage = nextUrl.pathname === "/login";
+      const isAuthPage =
+        nextUrl.pathname === "/login" || nextUrl.pathname === "/register";
 
-      if (isLoginPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/tracker", nextUrl));
+      // Public page shown to invoice payers after Stripe checkout
+      if (nextUrl.pathname.startsWith("/pay/")) return true;
+
+      if (isAuthPage) {
+        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
         return true;
       }
 

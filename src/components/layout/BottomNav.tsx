@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Clock, FolderOpen, Users, BarChart2, FileText } from "lucide-react";
+import { Clock, FolderOpen, Users, LayoutDashboard, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
+  { label: "Home", icon: LayoutDashboard, href: "/dashboard" },
   { label: "Tracker", icon: Clock, href: "/tracker" },
   { label: "Projects", icon: FolderOpen, href: "/projects" },
   { label: "Clients", icon: Users, href: "/clients" },
-  { label: "Reports", icon: BarChart2, href: "/reports" },
   { label: "Invoices", icon: FileText, href: "/invoices" },
 ];
 

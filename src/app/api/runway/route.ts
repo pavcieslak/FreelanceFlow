@@ -1,68 +1,59 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
+  const settings = await prisma.settings.findUnique({ where: { userId } });
   const monthlyExpenses = settings?.monthlyExpenses ?? 0;
+  const defaultRate = settings?.defaultHourlyRate ?? 0;
   const currency = settings?.defaultCurrency ?? "USD";
 
   const now = new Date();
+  const windowStart = startOfMonth(subMonths(now, 5));
+  const windowEnd = endOfMonth(now);
 
-  // Current month tracked billable value
-  const currentMonthStart = startOfMonth(now);
-  const currentMonthEnd = endOfMonth(now);
-
-  const currentMonthEntries = await prisma.timeEntry.findMany({
+  // One query for the whole 6-month window, bucketed by month in JS
+  const entries = await prisma.timeEntry.findMany({
     where: {
+      userId,
       billable: true,
       isPlanned: false,
       endTime: { not: null },
-      startTime: { gte: currentMonthStart, lte: currentMonthEnd },
+      startTime: { gte: windowStart, lte: windowEnd },
     },
-    include: { project: true },
+    select: {
+      startTime: true,
+      duration: true,
+      project: { select: { hourlyRate: true } },
+    },
   });
 
-  let currentMonthValue = 0;
-  for (const entry of currentMonthEntries) {
-    const rate = entry.project?.hourlyRate ?? settings?.defaultHourlyRate ?? 0;
-    const hours = (entry.duration ?? 0) / 3600;
-    currentMonthValue += hours * rate;
+  const monthlyIncome = new Map<string, number>();
+  for (const entry of entries) {
+    const d = entry.startTime;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const rate = entry.project?.hourlyRate ?? defaultRate;
+    const value = ((entry.duration ?? 0) / 3600) * rate;
+    monthlyIncome.set(key, (monthlyIncome.get(key) ?? 0) + value);
   }
 
-  // Last 3 months average for projection
-  const last3Months = await Promise.all(
-    [1, 2, 3].map(async (n) => {
-      const start = startOfMonth(subMonths(now, n));
-      const end = endOfMonth(subMonths(now, n));
-      const entries = await prisma.timeEntry.findMany({
-        where: {
-          billable: true,
-          isPlanned: false,
-          endTime: { not: null },
-          startTime: { gte: start, lte: end },
-        },
-        include: { project: true },
-      });
-      let total = 0;
-      for (const entry of entries) {
-        const rate = entry.project?.hourlyRate ?? settings?.defaultHourlyRate ?? 0;
-        const hours = (entry.duration ?? 0) / 3600;
-        total += hours * rate;
-      }
-      return total;
-    })
-  );
+  const monthKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
+  const currentMonthValue = monthlyIncome.get(monthKey(now)) ?? 0;
+
+  const last3Months = [1, 2, 3].map(
+    (n) => monthlyIncome.get(monthKey(subMonths(now, n))) ?? 0
+  );
   const avgMonthlyIncome = last3Months.reduce((a, b) => a + b, 0) / 3;
 
   // Outstanding invoices (SENT but not PAID)
   const pendingInvoices = await prisma.invoice.findMany({
-    where: { status: "SENT" },
+    where: { userId, status: "SENT" },
     include: { items: true },
   });
   const pendingRevenue = pendingInvoices.reduce((sum, inv) => {
@@ -71,37 +62,16 @@ export async function GET() {
   }, 0);
 
   // Runway calculation
-  const runway = monthlyExpenses > 0
-    ? pendingRevenue / monthlyExpenses
-    : null;
+  const runway = monthlyExpenses > 0 ? pendingRevenue / monthlyExpenses : null;
 
   // Month-by-month history for sparkline (last 6 months)
-  const monthlyHistory = await Promise.all(
-    [5, 4, 3, 2, 1, 0].map(async (n) => {
-      const d = subMonths(now, n);
-      const start = startOfMonth(d);
-      const end = endOfMonth(d);
-      const entries = await prisma.timeEntry.findMany({
-        where: {
-          billable: true,
-          isPlanned: false,
-          endTime: { not: null },
-          startTime: { gte: start, lte: end },
-        },
-        include: { project: true },
-      });
-      let total = 0;
-      for (const entry of entries) {
-        const rate = entry.project?.hourlyRate ?? settings?.defaultHourlyRate ?? 0;
-        const hours = (entry.duration ?? 0) / 3600;
-        total += hours * rate;
-      }
-      return {
-        month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-        income: total,
-      };
-    })
-  );
+  const monthlyHistory = [5, 4, 3, 2, 1, 0].map((n) => {
+    const d = subMonths(now, n);
+    return {
+      month: monthKey(d),
+      income: monthlyIncome.get(monthKey(d)) ?? 0,
+    };
+  });
 
   return NextResponse.json({
     currency,

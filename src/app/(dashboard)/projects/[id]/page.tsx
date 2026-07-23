@@ -147,7 +147,7 @@ export default function ProjectDetailPage() {
         )}
 
         {tab === "settings" && (
-          <div className="max-w-md space-y-4">
+          <div className="w-full max-w-none grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 items-start">
             <div className="space-y-1">
               <label className="block text-sm font-medium text-text-muted">Name *</label>
               <input value={name} onChange={(e) => setName(e.target.value)}
@@ -186,7 +186,9 @@ export default function ProjectDetailPage() {
                 {billableByDefault ? "Billable by default" : "Non-billable by default"}
               </button>
             </div>
-            <Button onClick={saveSettings} loading={saving}>Save Settings</Button>
+            <div className="md:col-span-2">
+              <Button onClick={saveSettings} loading={saving}>Save Settings</Button>
+            </div>
           </div>
         )}
       </div>

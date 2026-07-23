@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 import { calculateAmount } from "@/lib/utils";
 import { startOfMonth, subMonths, startOfYear } from "date-fns";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const sp = req.nextUrl.searchParams;
   const period = sp.get("period") ?? "all";
@@ -18,13 +18,14 @@ export async function GET(req: NextRequest) {
   else if (period === "year") startDate = startOfYear(now);
 
   const projects = await prisma.project.findMany({
-    where: { archived: false },
+    where: { userId, archived: false },
     include: { client: true },
     orderBy: { createdAt: "desc" },
   });
 
   const entries = await prisma.timeEntry.findMany({
     where: {
+      userId,
       isPlanned: false,
       endTime: { not: null },
       ...(startDate && { startTime: { gte: startDate } }),

@@ -63,7 +63,7 @@ export default function TagsPage() {
 
   return (
     <PageShell title="Tags">
-      <div className="max-w-lg space-y-4">
+      <div className="w-full space-y-4">
         {/* Add new tag */}
         <div className="flex gap-2">
           <input value={newName} onChange={(e) => setNewName(e.target.value)}

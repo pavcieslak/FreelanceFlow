@@ -174,7 +174,7 @@ export default function SettingsPage() {
 
   return (
     <PageShell title="Settings">
-      <div className="max-w-xl space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
         {/* My Details */}
         <Section title="My Details">
           <Field label="Full Name">

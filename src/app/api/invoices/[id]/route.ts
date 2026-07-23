@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, notFound } from "@/lib/session";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: id, userId },
     include: {
       client: true,
       items: {
@@ -16,27 +17,43 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       },
     },
   });
-  if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!invoice) return notFound();
   return NextResponse.json(invoice);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
+  const existing = await prisma.invoice.findFirst({
+    where: { id: id, userId },
+  });
+  if (!existing) return notFound();
 
   const body = await req.json();
 
+  if (body.clientId !== undefined && body.clientId) {
+    const client = await prisma.client.findFirst({
+      where: { id: body.clientId, userId },
+    });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 400 });
+    }
+  }
+
   // Handle line items update: delete all and recreate
   if (body.items !== undefined) {
-    await prisma.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
   }
 
   const invoice = await prisma.invoice.update({
-    where: { id: params.id },
+    where: { id: id },
     data: {
       ...(body.number !== undefined && { number: body.number }),
       ...(body.clientId !== undefined && { clientId: body.clientId }),
       ...(body.status !== undefined && { status: body.status }),
+      ...(body.status === "PAID" && !existing.paidAt && { paidAt: new Date() }),
       ...(body.issueDate !== undefined && { issueDate: new Date(body.issueDate) }),
       ...(body.dueDate !== undefined && { dueDate: new Date(body.dueDate) }),
       ...(body.subject !== undefined && { subject: body.subject || null }),
@@ -64,10 +81,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(invoice);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  await prisma.invoice.delete({ where: { id: params.id } });
+  const existing = await prisma.invoice.findFirst({
+    where: { id: id, userId },
+  });
+  if (!existing) return notFound();
+
+  await prisma.invoice.delete({ where: { id: id } });
   return NextResponse.json({ success: true });
 }

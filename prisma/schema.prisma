@@ -3,46 +3,60 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id          String      @id @default(cuid())
+  email       String      @unique
+  password    String
+  name        String?
+  createdAt   DateTime    @default(now())
+  settings    Settings?
+  clients     Client[]
+  projects    Project[]
+  tags        Tag[]
+  timeEntries TimeEntry[]
+  invoices    Invoice[]
 }
 
 model Settings {
-  id               String  @id @default("singleton")
-  fullName         String?
-  businessName     String?
-  email            String?
-  address          String?
-  phone            String?
-  logo             String?
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  fullName          String?
+  businessName      String?
+  email             String?
+  address           String?
+  phone             String?
+  logo              String?
   defaultCurrency   String  @default("USD")
   defaultHourlyRate Float   @default(0)
   monthlyExpenses   Float   @default(0)
-  passwordHash      String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Client {
-  id        String    @id @default(cuid())
-  clockifyClientId String? @unique
-  name      String
-  email     String?
-  address   String?
-  currency  String    @default("USD")
-  archived  Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  projects  Project[]
-  invoices  Invoice[]
+  id               String    @id @default(cuid())
+  userId           String
+  clockifyClientId String?
+  name             String
+  email            String?
+  address          String?
+  currency         String    @default("USD")
+  archived         Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects         Project[]
+  invoices         Invoice[]
+
+  @@unique([userId, clockifyClientId])
+  @@index([userId, archived])
 }
 
 model Project {
   id                String      @id @default(cuid())
+  userId            String
   name              String
   color             String      @default("#3b82f6")
   clientId          String?
@@ -51,9 +65,13 @@ model Project {
   billableByDefault Boolean     @default(true)
   archived          Boolean     @default(false)
   createdAt         DateTime    @default(now())
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   client            Client?     @relation(fields: [clientId], references: [id])
   tasks             Task[]
   timeEntries       TimeEntry[]
+
+  @@index([userId, archived])
+  @@index([clientId])
 }
 
 model Task {
@@ -63,16 +81,23 @@ model Task {
   archived    Boolean     @default(false)
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
+
+  @@index([projectId])
 }
 
 model Tag {
   id          String         @id @default(cuid())
-  name        String         @unique
+  userId      String
+  name        String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   timeEntries TimeEntryTag[]
+
+  @@unique([userId, name])
 }
 
 model TimeEntry {
   id           String         @id @default(cuid())
+  userId       String
   description  String?
   projectId    String?
   taskId       String?
@@ -84,10 +109,16 @@ model TimeEntry {
   billable     Boolean        @default(true)
   invoiced     Boolean        @default(false)
   createdAt    DateTime       @default(now())
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project      Project?       @relation(fields: [projectId], references: [id])
   task         Task?          @relation(fields: [taskId], references: [id])
   tags         TimeEntryTag[]
   invoiceItems InvoiceItem[]
+
+  @@index([userId, startTime])
+  @@index([userId, isPlanned])
+  @@index([projectId])
+  @@index([taskId])
 }
 
 model TimeEntryTag {
@@ -100,22 +131,33 @@ model TimeEntryTag {
 }
 
 model Invoice {
-  id        String        @id @default(cuid())
-  clockifyInvoiceId String? @unique
-  number    String        @unique
-  clientId  String
-  status    String        @default("DRAFT")
-  issueDate DateTime      @default(now())
-  dueDate   DateTime
-  subject   String?
-  notes     String?
-  currency  String        @default("USD")
-  taxRate   Float         @default(0)
-  paidAmount Float        @default(0)
-  balanceAmount Float     @default(0)
-  createdAt DateTime      @default(now())
-  client    Client        @relation(fields: [clientId], references: [id])
-  items     InvoiceItem[]
+  id                String        @id @default(cuid())
+  userId            String
+  clockifyInvoiceId String?
+  number            String
+  clientId          String
+  status            String        @default("DRAFT")
+  issueDate         DateTime      @default(now())
+  dueDate           DateTime
+  subject           String?
+  notes             String?
+  currency          String        @default("USD")
+  taxRate           Float         @default(0)
+  paidAmount        Float         @default(0)
+  balanceAmount     Float         @default(0)
+  sentAt            DateTime?
+  paidAt            DateTime?
+  stripeSessionId   String?
+  paymentUrl        String?
+  createdAt         DateTime      @default(now())
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client            Client        @relation(fields: [clientId], references: [id])
+  items             InvoiceItem[]
+
+  @@unique([userId, number])
+  @@unique([userId, clockifyInvoiceId])
+  @@index([userId, status])
+  @@index([clientId])
 }
 
 model InvoiceItem {
@@ -128,4 +170,7 @@ model InvoiceItem {
   timeEntryId String?
   invoice     Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   timeEntry   TimeEntry? @relation(fields: [timeEntryId], references: [id])
+
+  @@index([invoiceId])
+  @@index([timeEntryId])
 }

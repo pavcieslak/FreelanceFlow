@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, notFound } from "@/lib/session";
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
+  const existing = await prisma.tag.findFirst({ where: { id: id, userId } });
+  if (!existing) return notFound();
 
   const body = await req.json();
   if (!body.name?.trim()) {
@@ -13,7 +17,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   try {
     const tag = await prisma.tag.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { name: body.name.trim() },
     });
     return NextResponse.json(tag);
@@ -22,10 +26,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  await prisma.tag.delete({ where: { id: params.id } });
+  const existing = await prisma.tag.findFirst({ where: { id: id, userId } });
+  if (!existing) return notFound();
+
+  await prisma.tag.delete({ where: { id: id } });
   return NextResponse.json({ success: true });
 }

@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const archived = req.nextUrl.searchParams.get("archived") === "true";
   const clients = await prisma.client.findMany({
-    where: { archived },
+    where: { userId, archived },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json(clients);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
   if (!body.name?.trim()) {
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
 
   const client = await prisma.client.create({
     data: {
+      userId,
       name: body.name.trim(),
       email: body.email || null,
       address: body.address || null,

@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized, notFound } from "@/lib/session";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
+
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: id, userId },
+  });
+  if (!invoice) return notFound();
 
   const body = await req.json();
   const entryIds: string[] = body.entryIds ?? [];
@@ -14,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const entries = await prisma.timeEntry.findMany({
-    where: { id: { in: entryIds }, isPlanned: false },
+    where: { id: { in: entryIds }, userId, isPlanned: false },
     include: { project: true },
   });
 
@@ -23,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const unitPrice = entry.project?.hourlyRate ?? 0;
     const amount = Math.round(hours * unitPrice * 100) / 100;
     return {
-      invoiceId: params.id,
+      invoiceId: id,
       description: entry.description || `Work on ${entry.project?.name ?? "project"}`,
       quantity: hours,
       unitPrice,
@@ -35,18 +41,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   await prisma.$transaction([
     prisma.invoiceItem.createMany({ data: items }),
     prisma.timeEntry.updateMany({
-      where: { id: { in: entryIds } },
+      where: { id: { in: entries.map((e) => e.id) } },
       data: { invoiced: true },
     }),
   ]);
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const updated = await prisma.invoice.findFirst({
+    where: { id: id, userId },
     include: {
       client: true,
       items: { include: { timeEntry: true }, orderBy: { id: "asc" } },
     },
   });
 
-  return NextResponse.json(invoice);
+  return NextResponse.json(updated);
 }

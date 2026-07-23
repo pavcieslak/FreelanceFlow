@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid email or password");
     } else {
-      router.push("/tracker");
+      router.push("/dashboard");
       router.refresh();
     }
   }
@@ -88,6 +89,13 @@ export default function LoginPage() {
             )}
             {loading ? "Signing in…" : "Sign in"}
           </button>
+
+          <p className="text-sm text-text-muted text-center">
+            New here?{" "}
+            <Link href="/register" className="text-accent hover:underline">
+              Create an account
+            </Link>
+          </p>
         </form>
       </div>
     </div>

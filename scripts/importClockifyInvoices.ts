@@ -43,10 +43,14 @@ const prisma = new PrismaClient();
 function getConfig() {
   const apiKey = process.env.CLOCKIFY_API_KEY;
   const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
+  const userEmail = process.env.IMPORT_USER_EMAIL ?? process.env.AUTH_EMAIL;
   if (!apiKey || !workspaceId) {
     throw new Error("CLOCKIFY_API_KEY and CLOCKIFY_WORKSPACE_ID must be set");
   }
-  return { apiKey, workspaceId };
+  if (!userEmail) {
+    throw new Error("IMPORT_USER_EMAIL (or AUTH_EMAIL) must be set to pick the target account");
+  }
+  return { apiKey, workspaceId, userEmail };
 }
 
 async function clockifyFetch<T>(path: string, apiKey: string): Promise<T> {
@@ -101,12 +105,18 @@ function withSuffix(base: string, suffix: string) {
   return `${safe}-${suffix}`;
 }
 
-async function resolveUniqueInvoiceNumber(preferredNumber: string, existingInvoiceId?: string) {
+async function resolveUniqueInvoiceNumber(
+  userId: string,
+  preferredNumber: string,
+  existingInvoiceId?: string
+) {
   let candidate = preferredNumber;
   let attempt = 0;
 
   while (true) {
-    const existing = await prisma.invoice.findUnique({ where: { number: candidate } });
+    const existing = await prisma.invoice.findUnique({
+      where: { userId_number: { userId, number: candidate } },
+    });
     if (!existing || existing.id === existingInvoiceId) return candidate;
     attempt += 1;
     candidate = withSuffix(preferredNumber, String(attempt));
@@ -114,16 +124,19 @@ async function resolveUniqueInvoiceNumber(preferredNumber: string, existingInvoi
 }
 
 async function ensureClient(
+  userId: string,
   clockifyClientId: string,
   clientName: string,
   clientAddress: string | undefined,
   currency: string
 ) {
-  const byClockifyId = await prisma.client.findUnique({ where: { clockifyClientId } });
+  const byClockifyId = await prisma.client.findUnique({
+    where: { userId_clockifyClientId: { userId, clockifyClientId } },
+  });
   if (byClockifyId) return byClockifyId;
 
   const byName = await prisma.client.findFirst({
-    where: { name: clientName, archived: false },
+    where: { userId, name: clientName, archived: false },
     orderBy: { createdAt: "desc" },
   });
 
@@ -140,6 +153,7 @@ async function ensureClient(
 
   return prisma.client.create({
     data: {
+      userId,
       clockifyClientId,
       name: clientName,
       address: clientAddress ?? null,
@@ -148,8 +162,9 @@ async function ensureClient(
   });
 }
 
-async function upsertInvoice(detail: ClockifyInvoiceDetail) {
+async function upsertInvoice(userId: string, detail: ClockifyInvoiceDetail) {
   const client = await ensureClient(
+    userId,
     detail.clientId,
     detail.clientName || "Clockify Client",
     detail.clientAddress,
@@ -160,10 +175,12 @@ async function upsertInvoice(detail: ClockifyInvoiceDetail) {
   const taxAmount = toMajorUnits((detail.taxAmount ?? 0) + (detail.tax2Amount ?? 0));
   const taxRate = subtotal > 0 ? Number(((taxAmount / subtotal) * 100).toFixed(2)) : 0;
 
-  const existing = await prisma.invoice.findUnique({ where: { clockifyInvoiceId: detail.id } });
+  const existing = await prisma.invoice.findUnique({
+    where: { userId_clockifyInvoiceId: { userId, clockifyInvoiceId: detail.id } },
+  });
 
   const preferredNumber = detail.number?.trim() || `CLK-${detail.id.slice(-6)}`;
-  const number = await resolveUniqueInvoiceNumber(preferredNumber, existing?.id);
+  const number = await resolveUniqueInvoiceNumber(userId, preferredNumber, existing?.id);
 
   const items = (detail.items ?? []).map((item, idx) => ({
     description: item.description?.trim() || `Clockify item ${idx + 1}`,
@@ -205,6 +222,7 @@ async function upsertInvoice(detail: ClockifyInvoiceDetail) {
 
   const created = await prisma.invoice.create({
     data: {
+      userId,
       ...baseData,
       items: items.length ? { create: items } : undefined,
     },
@@ -215,7 +233,14 @@ async function upsertInvoice(detail: ClockifyInvoiceDetail) {
 }
 
 async function main() {
-  const { apiKey, workspaceId } = getConfig();
+  const { apiKey, workspaceId, userEmail } = getConfig();
+
+  const user = await prisma.user.findUnique({ where: { email: userEmail } });
+  if (!user) {
+    throw new Error(`No user found for ${userEmail} — create the account first`);
+  }
+  const userId = user.id;
+
   const ids = await fetchAllInvoiceIds(workspaceId, apiKey);
 
   let created = 0;
@@ -226,13 +251,15 @@ async function main() {
       `/workspaces/${workspaceId}/invoices/${id}`,
       apiKey
     );
-    const result = await upsertInvoice(detail);
+    const result = await upsertInvoice(userId, detail);
     if (result.action === "created") created += 1;
     else updated += 1;
   }
 
-  const totalLocal = await prisma.invoice.count();
-  const clockifyLinked = await prisma.invoice.count({ where: { clockifyInvoiceId: { not: null } } });
+  const totalLocal = await prisma.invoice.count({ where: { userId } });
+  const clockifyLinked = await prisma.invoice.count({
+    where: { userId, clockifyInvoiceId: { not: null } },
+  });
 
   console.log(
     JSON.stringify(

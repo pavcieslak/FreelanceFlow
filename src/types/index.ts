@@ -1,11 +1,13 @@
 export interface User {
   id: string;
   email: string;
+  name?: string | null;
   createdAt: string;
 }
 
 export interface Settings {
   id: string;
+  userId?: string;
   fullName: string | null;
   businessName: string | null;
   email: string | null;
@@ -87,6 +89,9 @@ export interface Invoice {
   taxRate: number;
   paidAmount?: number;
   balanceAmount?: number;
+  sentAt?: string | null;
+  paidAt?: string | null;
+  paymentUrl?: string | null;
   createdAt: string;
   client?: Client;
   items?: InvoiceItem[];

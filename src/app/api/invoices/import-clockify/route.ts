@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 
 const CLOCKIFY_API_BASE = "https://api.clockify.me/api/v1";
 
@@ -118,6 +118,7 @@ function buildUniqueNumber(base: string, suffix: string) {
 }
 
 async function resolveUniqueInvoiceNumber(
+  userId: string,
   preferredNumber: string,
   existingInvoiceId?: string
 ): Promise<string> {
@@ -125,7 +126,9 @@ async function resolveUniqueInvoiceNumber(
   let attempt = 0;
 
   while (true) {
-    const existing = await prisma.invoice.findUnique({ where: { number: candidate } });
+    const existing = await prisma.invoice.findUnique({
+      where: { userId_number: { userId, number: candidate } },
+    });
     if (!existing || existing.id === existingInvoiceId) return candidate;
     attempt += 1;
     candidate = buildUniqueNumber(preferredNumber, String(attempt));
@@ -133,18 +136,19 @@ async function resolveUniqueInvoiceNumber(
 }
 
 async function ensureClient(
+  userId: string,
   clockifyClientId: string,
   clientName: string,
   clientAddress: string | undefined,
   currency: string
 ) {
   const byClockifyId = await prisma.client.findUnique({
-    where: { clockifyClientId },
+    where: { userId_clockifyClientId: { userId, clockifyClientId } },
   });
   if (byClockifyId) return byClockifyId;
 
   const byName = await prisma.client.findFirst({
-    where: { name: clientName, archived: false },
+    where: { userId, name: clientName, archived: false },
     orderBy: { createdAt: "desc" },
   });
 
@@ -161,6 +165,7 @@ async function ensureClient(
 
   return prisma.client.create({
     data: {
+      userId,
       clockifyClientId,
       name: clientName,
       address: clientAddress ?? null,
@@ -169,8 +174,9 @@ async function ensureClient(
   });
 }
 
-async function upsertClockifyInvoice(detail: ClockifyInvoiceDetail) {
+async function upsertClockifyInvoice(userId: string, detail: ClockifyInvoiceDetail) {
   const client = await ensureClient(
+    userId,
     detail.clientId,
     detail.clientName || "Clockify Client",
     detail.clientAddress,
@@ -182,10 +188,11 @@ async function upsertClockifyInvoice(detail: ClockifyInvoiceDetail) {
   const taxRate = subtotal > 0 ? Number(((taxAmount / subtotal) * 100).toFixed(2)) : 0;
 
   const existing = await prisma.invoice.findUnique({
-    where: { clockifyInvoiceId: detail.id },
+    where: { userId_clockifyInvoiceId: { userId, clockifyInvoiceId: detail.id } },
   });
 
   const number = await resolveUniqueInvoiceNumber(
+    userId,
     detail.number?.trim() || `CLK-${detail.id.slice(-6)}`,
     existing?.id
   );
@@ -233,6 +240,7 @@ async function upsertClockifyInvoice(detail: ClockifyInvoiceDetail) {
 
   const created = await prisma.invoice.create({
     data: {
+      userId,
       ...baseData,
       items: items.length ? { create: items } : undefined,
     },
@@ -243,8 +251,8 @@ async function upsertClockifyInvoice(detail: ClockifyInvoiceDetail) {
 }
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   try {
     const { apiKey, workspaceId } = getClockifyConfig();
@@ -283,8 +291,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   try {
     const { apiKey, workspaceId } = getClockifyConfig();
@@ -305,7 +313,7 @@ export async function POST(req: NextRequest) {
         `/workspaces/${workspaceId}/invoices/${inv.id}`,
         apiKey
       );
-      const imported = await upsertClockifyInvoice(detail);
+      const imported = await upsertClockifyInvoice(userId, detail);
       results.push({
         clockifyInvoiceId: inv.id,
         localInvoiceId: imported?.id,

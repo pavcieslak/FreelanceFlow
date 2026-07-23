@@ -27,33 +27,28 @@ export default function TrackerPage() {
       .catch(() => {});
   }, []);
 
-  const loadEntries = useCallback(async (reset = false) => {
+  const loadEntries = useCallback(async (targetPage: number) => {
     setLoading(true);
-    const p = reset ? 1 : page;
     try {
-      const res = await fetch(`/api/time-entries?page=${p}&limit=50`);
+      const res = await fetch(`/api/time-entries?page=${targetPage}&limit=50`);
       const data = await res.json();
-      setEntries((prev) => (reset || p === 1 ? data.entries : [...prev, ...data.entries]));
+      setEntries((prev) =>
+        targetPage === 1 ? data.entries : [...prev, ...data.entries]
+      );
       setTotal(data.total);
-      if (reset) setPage(1);
+      setPage(targetPage);
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, []);
 
   useEffect(() => {
-    loadEntries(true);
-  }, []);
+    loadEntries(1);
+  }, [loadEntries]);
 
   async function handleDelete(id: string) {
     await fetch(`/api/time-entries/${id}`, { method: "DELETE" });
-    loadEntries(true);
-  }
-
-  function handleRestart(entry: TimeEntry) {
-    // The TimerBar handles this by watching for a restart signal
-    // For simplicity we just set project + description in a new timer
-    // This is handled via a prop callback
+    loadEntries(1);
   }
 
   return (
@@ -61,9 +56,9 @@ export default function TrackerPage() {
       <TimerBar
         projects={projects}
         tags={tags}
-        onEntryCreated={() => loadEntries(true)}
+        onEntryCreated={() => loadEntries(1)}
       />
-      <TrackerCalendar projects={projects} onBookingCreated={() => loadEntries(true)} />
+      <TrackerCalendar projects={projects} onBookingCreated={() => loadEntries(1)} />
       <div className="flex-1 overflow-y-auto">
         <TimeEntryList
           entries={entries}
@@ -72,10 +67,7 @@ export default function TrackerPage() {
           onEdit={setEditEntry}
           onDelete={handleDelete}
           onRestart={() => {}}
-          onLoadMore={() => {
-            setPage((p) => p + 1);
-            loadEntries(false);
-          }}
+          onLoadMore={() => loadEntries(page + 1)}
         />
       </div>
       <EditEntryModal
@@ -83,7 +75,7 @@ export default function TrackerPage() {
         projects={projects}
         tags={tags}
         onClose={() => setEditEntry(null)}
-        onSaved={() => loadEntries(true)}
+        onSaved={() => loadEntries(1)}
       />
     </div>
   );

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
-  const settings = await prisma.settings.findUnique({ where: { id: "singleton" } });
-  return NextResponse.json(settings ?? { id: "singleton" });
+  const settings = await prisma.settings.findUnique({ where: { userId } });
+  return NextResponse.json(settings ?? { userId });
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
 
@@ -22,7 +22,13 @@ export async function PUT(req: NextRequest) {
     if (!body.currentPassword) {
       return NextResponse.json({ error: "Current password required" }, { status: 400 });
     }
-    const user = await prisma.user.findUnique({ where: { email: session.user?.email ?? "" } });
+    if (body.newPassword.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const valid = await bcrypt.compare(body.currentPassword, user.password);
@@ -33,7 +39,7 @@ export async function PUT(req: NextRequest) {
   }
 
   const settings = await prisma.settings.upsert({
-    where: { id: "singleton" },
+    where: { userId },
     update: {
       ...(body.fullName !== undefined && { fullName: body.fullName || null }),
       ...(body.businessName !== undefined && { businessName: body.businessName || null }),
@@ -46,7 +52,7 @@ export async function PUT(req: NextRequest) {
       ...(body.monthlyExpenses !== undefined && { monthlyExpenses: body.monthlyExpenses }),
     },
     create: {
-      id: "singleton",
+      userId,
       fullName: body.fullName || null,
       businessName: body.businessName || null,
       email: body.email || null,

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const entry = await prisma.timeEntry.findFirst({
-    where: { endTime: null, isPlanned: false },
+    where: { userId, endTime: null, isPlanned: false },
     include: {
       project: { include: { client: true } },
       task: true,

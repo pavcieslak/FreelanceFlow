@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserId, unauthorized } from "@/lib/session";
 import { generateInvoiceNumber } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const status = req.nextUrl.searchParams.get("status");
   const sort = req.nextUrl.searchParams.get("sort");
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       : [{ issueDate: "desc" as const }, { createdAt: "desc" as const }];
 
   const invoices = await prisma.invoice.findMany({
-    where: status ? { status } : undefined,
+    where: { userId, ...(status && { status }) },
     include: { client: true, items: true },
     orderBy,
   });
@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getUserId();
+  if (!userId) return unauthorized();
 
   const body = await req.json();
   if (!body.clientId) {
@@ -34,7 +34,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Due date is required" }, { status: 400 });
   }
 
+  const client = await prisma.client.findFirst({
+    where: { id: body.clientId, userId },
+  });
+  if (!client) {
+    return NextResponse.json({ error: "Client not found" }, { status: 400 });
+  }
+
   const maxInvoice = await prisma.invoice.findFirst({
+    where: { userId },
     orderBy: { number: "desc" },
     select: { number: true },
   });
@@ -42,6 +50,7 @@ export async function POST(req: NextRequest) {
 
   const invoice = await prisma.invoice.create({
     data: {
+      userId,
       number,
       clientId: body.clientId,
       status: "DRAFT",

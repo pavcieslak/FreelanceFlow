@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, ArrowLeft, Download, Clock } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Download, Clock, Send, Link2, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import ImportTimeModal from "@/components/invoices/ImportTimeModal";
@@ -31,6 +31,10 @@ export default function InvoiceEditorPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   // Editable fields
@@ -114,6 +118,45 @@ export default function InvoiceEditorPage() {
     }
   }
 
+  async function handleSend() {
+    setSending(true);
+    setFeedback(null);
+    try {
+      await save();
+      const res = await fetch(`/api/invoices/${id}/send`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setFeedback({ kind: "error", text: data?.error ?? "Failed to send invoice" });
+      } else {
+        setFeedback({ kind: "success", text: "Invoice sent to the client's email" });
+        await loadInvoice();
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handlePaymentLink() {
+    setLinking(true);
+    setFeedback(null);
+    try {
+      await save();
+      const res = await fetch(`/api/invoices/${id}/payment-link`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setFeedback({ kind: "error", text: data?.error ?? "Failed to create payment link" });
+      } else {
+        await navigator.clipboard.writeText(data.paymentUrl).catch(() => {});
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+        setFeedback({ kind: "success", text: "Payment link created and copied to clipboard" });
+        await loadInvoice();
+      }
+    } finally {
+      setLinking(false);
+    }
+  }
+
   if (loading || !invoice) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -139,6 +182,13 @@ export default function InvoiceEditorPage() {
           <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
             <Clock size={14} /> Import Time
           </Button>
+          <Button variant="secondary" size="sm" onClick={handlePaymentLink} loading={linking}>
+            {linkCopied ? <Check size={14} /> : <Link2 size={14} />}
+            {linkCopied ? "Copied" : "Payment Link"}
+          </Button>
+          <Button variant="secondary" size="sm" onClick={handleSend} loading={sending}>
+            <Send size={14} /> Send
+          </Button>
           <Link href={`/invoices/${id}/pdf`} target="_blank"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-elevated border border-border rounded text-sm text-text-muted hover:text-text-primary transition-colors">
             <Download size={14} /> PDF
@@ -153,7 +203,20 @@ export default function InvoiceEditorPage() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 md:px-6 py-6 max-w-4xl mx-auto w-full space-y-6">
+      {feedback && (
+        <div
+          className={cn(
+            "mx-4 md:mx-6 mt-4 rounded border px-3 py-2 text-sm",
+            feedback.kind === "success"
+              ? "bg-accent/10 border-accent/30 text-accent"
+              : "bg-danger/10 border-danger/30 text-danger"
+          )}
+        >
+          {feedback.text}
+        </div>
+      )}
+
+      <div className="flex-1 px-4 md:px-6 py-6 w-full space-y-6">
         {/* Dates row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-1">
