@@ -1,0 +1,10 @@
+# Local development overrides. Docker Compose merges this file automatically,
+# so `docker compose up -d db` exposes Postgres on the host for `prisma migrate`,
+# `prisma studio` and the SQLite import script.
+#
+# On the production server this file should NOT be present — copy only
+# docker-compose.yml there, so the database stays unreachable from outside.
+services:
+  db:
+    ports:
+      - "5432:5432"

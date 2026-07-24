@@ -3,13 +3,41 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: projectflow
-      POSTGRES_PASSWORD: projectflow
-      POSTGRES_DB: projectflow
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-projectflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-projectflow}
+      POSTGRES_DB: ${POSTGRES_DB:-projectflow}
+    # Not published to the host by default — only the app container reaches it.
+    # Uncomment for local development against the database directly.
+    # ports:
+    #   - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-projectflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-projectflow}:${POSTGRES_PASSWORD:-projectflow}@db:5432/${POSTGRES_DB:-projectflow}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET in .env}
+      NEXTAUTH_URL: ${APP_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
 
 volumes:
   pgdata:

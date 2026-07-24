@@ -45,6 +45,25 @@ export function generateInvoiceNumber(maxNumber: string | null): string {
   return `INV-${String(next).padStart(3, "0")}`;
 }
 
+/**
+ * Highest sequence number across existing invoice numbers.
+ *
+ * Sorting invoice numbers as strings in the database is wrong past 999
+ * ("INV-999" sorts above "INV-1000"), and imported invoices may not follow the
+ * INV-nnn shape at all, so the numeric part is compared explicitly here and
+ * anything unrecognised is ignored rather than derailing the sequence.
+ */
+export function nextInvoiceNumberFrom(existingNumbers: string[]): string {
+  let highest = 0;
+  for (const value of existingNumbers) {
+    const match = value.match(/^INV-(\d+)$/);
+    if (!match) continue;
+    const parsed = parseInt(match[1], 10);
+    if (Number.isFinite(parsed) && parsed > highest) highest = parsed;
+  }
+  return `INV-${String(highest + 1).padStart(3, "0")}`;
+}
+
 export const CURRENCIES = ["USD", "GBP", "EUR", "PLN", "AUD", "CAD"] as const;
 
 export const PROJECT_COLORS = [

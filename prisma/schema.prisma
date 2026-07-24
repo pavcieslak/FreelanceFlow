@@ -174,3 +174,11 @@ model InvoiceItem {
   @@index([invoiceId])
   @@index([timeEntryId])
 }
+
+/// Records Stripe event ids that have already been applied, so retried or
+/// duplicated webhook deliveries are ignored instead of double-processed.
+model ProcessedWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+}

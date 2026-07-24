@@ -72,7 +72,61 @@ nothing gets duplicated.
 Point the Stripe webhook at `POST /api/webhooks/stripe` with the
 `checkout.session.completed` event.
 
+## Deploying to your own server
+
+The app ships as a Docker image with a standalone Next.js server. On an Ubuntu
+host with Docker installed:
+
+```bash
+git clone <your-repo> projectflow && cd projectflow
+
+# docker-compose.override.yml only exists for local dev — it publishes Postgres
+# to the host. Remove it on the server so the database stays private.
+rm -f docker-compose.override.yml
+
+cat > .env <<'EOF'
+POSTGRES_PASSWORD=<a long random password>
+NEXTAUTH_SECRET=<openssl rand -base64 32>
+APP_URL=https://projectflow.yourdomain.com
+APP_PORT=3000
+EOF
+
+docker compose up -d --build
+```
+
+Migrations run automatically on container start, and the container reports
+health at `/api/health`. To update:
+
+```bash
+git pull && docker compose up -d --build
+```
+
+### Before exposing it to the internet
+
+- **Terminate TLS in front of the app.** Put Caddy or nginx in front of port
+  3000 — the app sets HSTS, which only makes sense over HTTPS. Caddy gets you a
+  certificate automatically with a two-line config.
+- **Make sure your proxy overwrites `X-Forwarded-For`** rather than appending to
+  it, otherwise clients can spoof it and bypass the login/signup rate limits.
+- **Back up the database.** The Docker volume is the only copy of your data:
+  `docker compose exec -T db pg_dump -U projectflow projectflow | gzip > backup-$(date +%F).sql.gz`,
+  ideally on a cron job with copies kept off the machine.
+- **Restrict signups if the instance is only for you.** `/register` is open to
+  anyone who can reach it; put it behind your proxy or a firewall rule if the
+  host is public.
+
+## Development
+
+```bash
+npm test          # unit tests (Vitest)
+npm run typecheck # tsc --noEmit
+npm run build     # production build
+```
+
+CI runs typecheck, tests and a build against a real PostgreSQL service on every
+push (`.github/workflows/ci.yml`).
+
 ## Stack
 
 Next.js (App Router) · TypeScript · Prisma · PostgreSQL · NextAuth v5 ·
-Tailwind CSS · react-pdf
+Tailwind CSS · react-pdf · Vitest
