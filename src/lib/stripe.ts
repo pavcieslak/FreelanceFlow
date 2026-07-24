@@ -1,5 +1,19 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
+/**
+ * Stripe Checkout integration for invoice payment links.
+ *
+ * IMPORTANT — single-account model. Sessions are created with one global
+ * STRIPE_SECRET_KEY, so every payment settles into the account that owns that
+ * key. That is exactly right for a self-hosted instance you run for yourself.
+ *
+ * It is NOT suitable for running this as a hosted product for other people:
+ * their clients' invoice payments would land in the operator's Stripe account,
+ * making the operator a money transmitter and requiring manual payouts.
+ * Selling this as a multi-tenant SaaS requires Stripe Connect — each user
+ * onboards their own connected account, and requests pass that account id via
+ * the `Stripe-Account` header (or `stripeAccount` in the SDK).
+ */
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 
 export function stripeEnabled(): boolean {
