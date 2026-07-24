@@ -201,7 +201,7 @@ async function main() {
           clientId: r.clientId as string,
           status: (r.status as string) ?? "DRAFT",
           issueDate: toDate(r.issueDate) ?? new Date(),
-          dueDate: toDate(r.dueDate) ?? new Date(),
+          dueDate: toDate(r.dueDate),
           subject: (r.subject as string) ?? null,
           notes: (r.notes as string) ?? null,
           currency: (r.currency as string) ?? "USD",

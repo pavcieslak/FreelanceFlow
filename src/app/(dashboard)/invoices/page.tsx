@@ -63,14 +63,18 @@ export default function InvoicesPage() {
   useEffect(() => { load(); }, [filter, dateSort]);
 
   async function createInvoice() {
-    if (!newClientId || !newDueDate) return;
+    if (!newClientId) return;
     setCreating(true);
     try {
       const client = clients.find((c) => c.id === newClientId);
       const res = await fetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: newClientId, dueDate: new Date(newDueDate).toISOString(), currency: client?.currency ?? "USD" }),
+        body: JSON.stringify({
+          clientId: newClientId,
+          dueDate: newDueDate ? new Date(newDueDate).toISOString() : null,
+          currency: client?.currency ?? "USD",
+        }),
       });
       const inv = await res.json();
       if (inv.id) router.push(`/invoices/${inv.id}`);
@@ -149,7 +153,9 @@ export default function InvoicesPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-text-primary">{inv.client?.name}</td>
                     <td className="px-4 py-3 text-sm text-text-muted">{formatDateShort(inv.issueDate)}</td>
-                    <td className="px-4 py-3 text-sm text-text-muted">{formatDateShort(inv.dueDate)}</td>
+                    <td className="px-4 py-3 text-sm text-text-muted">
+                      {inv.dueDate ? formatDateShort(inv.dueDate) : "—"}
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium text-text-primary">{formatCurrency(invoiceTotal(inv), inv.currency)}</td>
                     <td className="px-4 py-3">{statusBadge(inv.status)}</td>
                     <td className="px-4 py-3">
@@ -181,7 +187,11 @@ export default function InvoicesPage() {
                 </div>
                 <p className="text-text-primary text-sm mt-1">{inv.client?.name}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-text-muted text-xs">Due {formatDateShort(inv.dueDate)}</span>
+                  <span className="text-text-muted text-xs">
+                    {inv.dueDate
+                      ? `Due ${formatDateShort(inv.dueDate)}`
+                      : `Issued ${formatDateShort(inv.issueDate)}`}
+                  </span>
                   <span className="font-medium text-text-primary text-sm">{formatCurrency(invoiceTotal(inv), inv.currency)}</span>
                 </div>
               </Link>
@@ -202,13 +212,27 @@ export default function InvoicesPage() {
             </select>
           </div>
           <div className="space-y-1">
-            <label className="block text-sm font-medium text-text-muted">Due Date *</label>
+            <div className="flex items-baseline justify-between">
+              <label className="block text-sm font-medium text-text-muted">Due Date</label>
+              {newDueDate && (
+                <button
+                  type="button"
+                  onClick={() => setNewDueDate("")}
+                  className="text-xs text-text-muted hover:text-accent transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <input type="date" value={newDueDate} onChange={(e) => setNewDueDate(e.target.value)}
               className="w-full bg-surface-elevated border border-border rounded px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent text-sm" />
+            <p className="text-xs text-text-muted">
+              Optional — leave empty to issue the invoice without a payment deadline.
+            </p>
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" onClick={() => setNewOpen(false)} className="flex-1">Cancel</Button>
-            <Button onClick={createInvoice} loading={creating} disabled={!newClientId || !newDueDate} className="flex-1">Create</Button>
+            <Button onClick={createInvoice} loading={creating} disabled={!newClientId} className="flex-1">Create</Button>
           </div>
         </div>
       </Modal>

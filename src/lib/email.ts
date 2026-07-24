@@ -52,7 +52,7 @@ export function renderInvoiceEmail(opts: {
   subtotal: number;
   taxRate: number;
   total: number;
-  dueDate: string;
+  dueDate: string | null;
   notes?: string | null;
   paymentUrl?: string | null;
   items: Array<{ description: string; quantity: number; unitPrice: number; amount: number }>;
@@ -86,7 +86,11 @@ export function renderInvoiceEmail(opts: {
     <h2 style="margin-bottom:4px;">Invoice ${escapeHtml(opts.invoiceNumber)}</h2>
     <p style="color:#6b7280;margin-top:0;">from ${escapeHtml(opts.businessName)}</p>
     <p>Hi ${escapeHtml(opts.clientName)},</p>
-    <p>Please find your invoice below. Payment is due by <strong>${escapeHtml(opts.dueDate)}</strong>.</p>
+    <p>${
+      opts.dueDate
+        ? `Please find your invoice below. Payment is due by <strong>${escapeHtml(opts.dueDate)}</strong>.`
+        : "Please find your invoice below."
+    }</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
       <thead>
         <tr style="background:#f9fafb;">

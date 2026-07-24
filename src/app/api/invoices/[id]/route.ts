@@ -55,7 +55,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(body.status !== undefined && { status: body.status }),
       ...(body.status === "PAID" && !existing.paidAt && { paidAt: new Date() }),
       ...(body.issueDate !== undefined && { issueDate: new Date(body.issueDate) }),
-      ...(body.dueDate !== undefined && { dueDate: new Date(body.dueDate) }),
+      ...(body.dueDate !== undefined && {
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      }),
       ...(body.subject !== undefined && { subject: body.subject || null }),
       ...(body.notes !== undefined && { notes: body.notes || null }),
       ...(body.currency !== undefined && { currency: body.currency }),

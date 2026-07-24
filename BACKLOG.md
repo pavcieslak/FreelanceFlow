@@ -60,9 +60,25 @@ płatności" tam, gdzie wymagane.
 
 ## Mniejsze rzeczy
 
-- **Reset hasła** — brak flow "zapomniałem hasła". Przy jednym użytkowniku
-  rozwiązywalne ręcznie w bazie; przy zewnętrznych użytkownikach konieczne.
 - **Weryfikacja e-mail przy rejestracji** — `/register` przyjmuje dowolny
   adres bez potwierdzenia.
 - **Rate limiting w pamięci procesu** (`src/lib/rateLimit.ts`) — działa dla
   jednej instancji. Przy skalowaniu poziomym wymaga przeniesienia do Redis.
+
+---
+
+## Zrobione
+
+- **Reset hasła** (2026-07-24) — flow "zapomniałem hasła" z tokenem
+  jednorazowym, wygasającym po 60 minutach, przechowywanym w bazie wyłącznie
+  jako hash. Zmiana hasła unieważnia wszystkie istniejące sesje przez
+  `User.passwordChangedAt`.
+
+  **Uwaga architektoniczna:** sprawdzenie `passwordChangedAt` wymaga zapytania
+  do bazy, więc żyje w `src/lib/auth.ts` (runtime Node). Middleware korzysta
+  z `src/lib/auth.config.ts`, który nie może importować Prismy — działa
+  w Edge Runtime. Nie łącz tych dwóch plików: import Prismy do middleware
+  powoduje, że **każda** strona przekierowuje na `/login`.
+
+- **Opcjonalna data płatności faktury** (2026-07-24) — `Invoice.dueDate` jest
+  teraz nullowalne; faktura może mieć samą datę wystawienia.

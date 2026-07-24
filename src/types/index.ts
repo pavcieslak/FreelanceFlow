@@ -82,7 +82,7 @@ export interface Invoice {
   clientId: string;
   status: "DRAFT" | "SENT" | "PAID";
   issueDate: string;
-  dueDate: string;
+  dueDate: string | null;
   subject: string | null;
   notes: string | null;
   currency: string;

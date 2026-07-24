@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/lib/auth.config";
 import { rateLimit } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
 import { validateEnv } from "@/lib/env";
@@ -13,8 +14,16 @@ validateEnv();
 // exist from timing observation.
 const DUMMY_HASH = "$2a$12$C6UzMDM.H6dfI/f/IKcEeO.PjkVRxlQTMYRPQpx5H8kmMvBqXQ0Ru";
 
+/**
+ * Node-runtime auth. Extends the edge-safe config in `auth.config.ts` with the
+ * pieces that need a database: credential verification and the check that a
+ * session predates the account's last password change.
+ *
+ * Middleware deliberately uses only the edge-safe config — do not import this
+ * module from middleware, or Prisma will fail to load in the Edge runtime.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -56,34 +65,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-  },
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isAuthPage =
-        nextUrl.pathname === "/login" || nextUrl.pathname === "/register";
-
-      // Public page shown to invoice payers after Stripe checkout
-      if (nextUrl.pathname.startsWith("/pay/")) return true;
-
-      if (isAuthPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
-        return true;
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        return token;
       }
 
-      if (!isLoggedIn) return false;
-      return true;
-    },
-    jwt({ token, user }) {
-      if (user) token.id = user.id;
+      // On every subsequent request, check the session was issued after the
+      // account's last password change. Without this, a password reset would
+      // not sign out whoever already holds a valid session token — which is
+      // precisely the case a reset is meant to handle.
+      if (!token.id || !token.iat) return token;
+
+      const account = await prisma.user.findUnique({
+        where: { id: token.id as string },
+        select: { passwordChangedAt: true },
+      });
+
+      // Account deleted underneath an active session.
+      if (!account) return null;
+
+      if (account.passwordChangedAt) {
+        const issuedAt = (token.iat as number) * 1000;
+        // One second of slack absorbs the truncation of `iat` to whole seconds,
+        // which would otherwise invalidate the session created by the reset itself.
+        if (issuedAt < account.passwordChangedAt.getTime() - 1000) return null;
+      }
+
       return token;
     },
-    session({ session, token }) {
-      if (token) session.user.id = token.id as string;
-      return session;
-    },
   },
-  session: { strategy: "jwt" },
 });

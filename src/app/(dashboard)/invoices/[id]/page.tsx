@@ -107,7 +107,7 @@ export default function InvoiceEditorPage() {
         body: JSON.stringify({
           number, status: overrideStatus ?? status,
           issueDate: new Date(issueDate).toISOString(),
-          dueDate: new Date(dueDate).toISOString(),
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
           subject, notes, taxRate, items,
         }),
       });
@@ -225,9 +225,23 @@ export default function InvoiceEditorPage() {
               className="w-full bg-surface-elevated border border-border rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent text-sm" />
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-text-muted uppercase tracking-wide">Due Date</label>
+            <div className="flex items-baseline justify-between">
+              <label className="block text-xs font-medium text-text-muted uppercase tracking-wide">Due Date</label>
+              {dueDate && (
+                <button
+                  type="button"
+                  onClick={() => setDueDate("")}
+                  className="text-xs text-text-muted hover:text-accent transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               className="w-full bg-surface-elevated border border-border rounded px-3 py-2 text-text-primary focus:outline-none focus:border-accent text-sm" />
+            {!dueDate && (
+              <p className="text-xs text-text-muted">No payment deadline set</p>
+            )}
           </div>
         </div>
 

@@ -69,9 +69,13 @@ function InvoicePDF({ invoice, settings }: { invoice: Invoice; settings: Setting
           </View>
           <View>
             <Text style={styles.label}>Issue Date</Text>
-            <Text style={{ marginBottom: 8 }}>{new Date(invoice.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
-            <Text style={styles.label}>Due Date</Text>
-            <Text>{new Date(invoice.dueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
+            <Text style={invoice.dueDate ? { marginBottom: 8 } : undefined}>{new Date(invoice.issueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
+            {invoice.dueDate && (
+              <>
+                <Text style={styles.label}>Due Date</Text>
+                <Text>{new Date(invoice.dueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</Text>
+              </>
+            )}
           </View>
         </View>
 

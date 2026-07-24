@@ -35,7 +35,13 @@ export async function PUT(req: NextRequest) {
     if (!valid) return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
 
     const hash = await bcrypt.hash(body.newPassword, 12);
-    await prisma.user.update({ where: { id: user.id }, data: { password: hash } });
+    // Stamping passwordChangedAt drops every existing session, including this
+    // one. That is the point: if you change your password because someone else
+    // got in, they must be signed out too.
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hash, passwordChangedAt: new Date() },
+    });
   }
 
   const settings = await prisma.settings.upsert({

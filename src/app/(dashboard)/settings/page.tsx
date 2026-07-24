@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { signOut } from "next-auth/react";
 import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
 import { Settings } from "@/types";
@@ -157,8 +158,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       if (res.ok) {
-        setPwdMsg({ type: "success", text: "Password updated successfully." });
+        setPwdMsg({
+          type: "success",
+          text: "Password updated. All devices have been signed out — redirecting you to sign in…",
+        });
         setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+        // The change invalidated this session too, so send the user to log in
+        // rather than letting them hit confusing failures on the next request.
+        setTimeout(() => signOut({ callbackUrl: "/login" }), 2000);
       } else {
         const d = await res.json();
         setPwdMsg({ type: "error", text: d.error ?? "Failed to update password." });

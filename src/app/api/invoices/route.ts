@@ -9,9 +9,14 @@ export async function GET(req: NextRequest) {
 
   const status = req.nextUrl.searchParams.get("status");
   const sort = req.nextUrl.searchParams.get("sort");
+  // Postgres ranks NULLs above every value, which would float invoices without
+  // a deadline to the top of a "by due date" listing. Push them to the end.
   const orderBy =
     sort === "dueDate_desc"
-      ? [{ dueDate: "desc" as const }, { createdAt: "desc" as const }]
+      ? [
+          { dueDate: { sort: "desc" as const, nulls: "last" as const } },
+          { createdAt: "desc" as const },
+        ]
       : [{ issueDate: "desc" as const }, { createdAt: "desc" as const }];
 
   const invoices = await prisma.invoice.findMany({
@@ -30,10 +35,6 @@ export async function POST(req: NextRequest) {
   if (!body.clientId) {
     return NextResponse.json({ error: "Client is required" }, { status: 400 });
   }
-  if (!body.dueDate) {
-    return NextResponse.json({ error: "Due date is required" }, { status: 400 });
-  }
-
   const client = await prisma.client.findFirst({
     where: { id: body.clientId, userId },
   });
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
           clientId: body.clientId,
           status: "DRAFT",
           issueDate: body.issueDate ? new Date(body.issueDate) : new Date(),
-          dueDate: new Date(body.dueDate),
+          dueDate: body.dueDate ? new Date(body.dueDate) : null,
           subject: body.subject || null,
           notes: body.notes || null,
           currency: body.currency || "USD",

@@ -82,7 +82,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         subtotal,
         taxRate: invoice.taxRate,
         total,
-        dueDate: format(invoice.dueDate, "MMMM d, yyyy"),
+        dueDate: invoice.dueDate ? format(invoice.dueDate, "MMMM d, yyyy") : null,
         notes: invoice.notes,
         paymentUrl,
         items: invoice.items.map((item) => ({

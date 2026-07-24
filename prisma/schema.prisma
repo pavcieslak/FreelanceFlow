@@ -13,12 +13,32 @@ model User {
   password    String
   name        String?
   createdAt   DateTime    @default(now())
+  /// Bumped whenever the password changes. Sessions issued before this instant
+  /// are rejected, so a reset actually locks out whoever had the old password.
+  passwordChangedAt DateTime?
   settings    Settings?
   clients     Client[]
   projects    Project[]
   tags        Tag[]
   timeEntries TimeEntry[]
   invoices    Invoice[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+/// Single-use, expiring password reset tokens.
+/// Only the SHA-256 hash of the token is stored — a database leak therefore
+/// doesn't hand an attacker usable reset links.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Settings {
@@ -138,7 +158,8 @@ model Invoice {
   clientId          String
   status            String        @default("DRAFT")
   issueDate         DateTime      @default(now())
-  dueDate           DateTime
+  /// Optional: some invoices are issued without an agreed payment deadline.
+  dueDate           DateTime?
   subject           String?
   notes             String?
   currency          String        @default("USD")
