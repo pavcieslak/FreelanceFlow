@@ -10,7 +10,7 @@ async function main() {
   const password = process.env.AUTH_PASSWORD;
 
   if (!email || !password) {
-    throw new Error("AUTH_EMAIL and AUTH_PASSWORD must be set in .env.local");
+    throw new Error("AUTH_EMAIL and AUTH_PASSWORD must be set in .env");
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);

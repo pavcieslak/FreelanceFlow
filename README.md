@@ -19,12 +19,35 @@ hours into invoices your clients can pay online.
 
 ## Getting started
 
+### In GitHub Codespaces (or VS Code Dev Containers)
+
+Create a Codespace on this repo. The dev container starts PostgreSQL alongside
+the app container and runs `.devcontainer/setup.sh`, which installs
+dependencies, writes a `.env` with a freshly generated `NEXTAUTH_SECRET`, and
+applies migrations. When it finishes:
+
+```bash
+npm run dev
+```
+
+Open the forwarded port 3000 and register at `/register`.
+
+The setup script points `NEXTAUTH_URL`/`APP_URL` at the Codespace's forwarded
+URL (`https://<codespace>-3000.app.github.dev`) rather than `localhost`. That
+matters: with a localhost auth URL, every sign-in redirect sends the browser to
+an address it cannot reach, and the app looks like it never started. If you
+rebuild the container under a different name, delete `.env` and re-run
+`npm run setup` to regenerate it.
+
+### Locally
+
 ```bash
 # 1. Start PostgreSQL (or point DATABASE_URL at your own)
 docker compose up -d db
 
-# 2. Configure environment
-cp .env.example .env.local   # fill in NEXTAUTH_SECRET at minimum
+# 2. Configure environment — use .env, not .env.local. Next.js reads both, but
+#    the Prisma CLI only reads .env, so migrations fail without it.
+cp .env.example .env         # fill in NEXTAUTH_SECRET at minimum
 
 # 3. Install and migrate
 npm install
@@ -56,6 +79,19 @@ Open `/api/health`. It reports whether the database is reachable and whether
 the schema matches this build — the usual cause is pulling new code without
 running `npx prisma migrate deploy`, and the response names the missing
 migrations and the command to fix it.
+
+### Startup troubleshooting
+
+`next dev` prints "Ready" and starts serving even when nothing is configured,
+so a broken setup shows up as failing pages rather than a failed boot:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `[auth][error] MissingSecret`, `/api/auth/session` returns 500 | No `NEXTAUTH_SECRET` | Put one in `.env` (`openssl rand -base64 32`) |
+| `/api/health` says `"database":"down"` | `DATABASE_URL` unset or Postgres not running | `docker compose up -d db`, check `.env` |
+| `prisma migrate deploy` → "Environment variable not found: DATABASE_URL" | Values are in `.env.local`; the Prisma CLI only reads `.env` | Use `.env` |
+| Sign-in redirects to an unreachable `localhost:3000` in a Codespace | `NEXTAUTH_URL` pinned to localhost | Set it to `https://<codespace>-3000.app.github.dev` |
+| Blank pane in the editor's built-in browser preview | `frame-ancestors`/`X-Frame-Options` blocked the iframe | Fixed in development; open the port in a real browser tab |
 
 ## Migrating data from the old single-tenant SQLite version
 
