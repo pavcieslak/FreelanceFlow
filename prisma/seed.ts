@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.AUTH_EMAIL;
+  // Lowercased to match how sign-in looks the address up — otherwise a seeded
+  // account with any uppercase would exist but never authenticate.
+  const email = process.env.AUTH_EMAIL?.toLowerCase().trim();
   const password = process.env.AUTH_PASSWORD;
 
   if (!email || !password) {

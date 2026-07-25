@@ -34,8 +34,28 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-Create your account at `/register`, or seed one with
-`AUTH_EMAIL`/`AUTH_PASSWORD` set and `npm run db:seed`.
+Create your account at `/register` — signing up needs no email provider.
+
+### Getting in without email
+
+Creating an account and signing in work with no mail provider configured;
+`RESEND_API_KEY`/`EMAIL_FROM` are only needed to *send* things (password reset
+links and invoices). If you're locked out and can't receive a reset link,
+create or reset an account straight against the database:
+
+```bash
+npm run user:set -- you@example.com "your-password"
+```
+
+It creates the account if it doesn't exist, resets the password if it does,
+and is safe to re-run.
+
+### When something fails with "Something went wrong"
+
+Open `/api/health`. It reports whether the database is reachable and whether
+the schema matches this build — the usual cause is pulling new code without
+running `npx prisma migrate deploy`, and the response names the missing
+migrations and the command to fix it.
 
 ## Migrating data from the old single-tenant SQLite version
 
