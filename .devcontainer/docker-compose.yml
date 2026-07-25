@@ -1,0 +1,38 @@
+# Dev environment for Codespaces / VS Code Dev Containers.
+#
+# Deliberately separate from the repo's top-level docker-compose.yml: that one
+# builds the *production* image and runs the compiled server, which is no use
+# for development. Here the app container is a plain Node image with the
+# workspace bind-mounted, so `npm run dev` picks up edits live.
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    # Keeps the container alive; the dev server is started by the user (or by
+    # the "Run dev server" task), not by the container.
+    command: sleep infinity
+    environment:
+      # The database lives in a sibling container, reachable by service name.
+      DATABASE_URL: postgresql://projectflow:projectflow@db:5432/projectflow
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: projectflow
+      POSTGRES_PASSWORD: projectflow
+      POSTGRES_DB: projectflow
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projectflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata-dev:
