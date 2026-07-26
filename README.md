@@ -121,11 +121,22 @@ nothing gets duplicated.
 
 ## Optional integrations
 
+The app is fully usable with none of these configured. Features that depend on
+one are disabled in the UI with an explanation rather than failing when clicked,
+and **Settings → Integrations** shows each integration's status and exactly which
+variables are still missing.
+
 | Feature | Env vars |
 | --- | --- |
 | Stripe payment links + auto-paid webhook | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Invoice email sending | `RESEND_API_KEY`, `EMAIL_FROM` |
 | Clockify invoice import | `CLOCKIFY_API_KEY`, `CLOCKIFY_WORKSPACE_ID` |
+
+Each integration is **all or nothing** — it stays off until every one of its
+variables is set. Half-configured is the worst state to be in: a Stripe secret
+key without a webhook secret would produce working payment links whose invoices
+were never marked paid. `src/lib/config.ts` is the only module that reads these
+variables; ask it rather than checking `process.env` in a new place.
 
 Point the Stripe webhook at `POST /api/webhooks/stripe` with the
 `checkout.session.completed` event.

@@ -6,6 +6,8 @@
  * sessions in production).
  */
 
+import { allIntegrations } from "@/lib/config";
+
 type EnvIssue = { key: string; message: string };
 
 const REQUIRED = ["DATABASE_URL", "NEXTAUTH_SECRET"] as const;
@@ -35,27 +37,17 @@ function collectIssues(): EnvIssue[] {
     });
   }
 
-  // Stripe: a webhook secret without an API key means payments can never be
-  // created, and an API key without a webhook secret means paid invoices are
-  // never marked as paid. Both halves or neither.
-  const hasStripeKey = !!process.env.STRIPE_SECRET_KEY?.trim();
-  const hasStripeWebhook = !!process.env.STRIPE_WEBHOOK_SECRET?.trim();
-  if (hasStripeKey !== hasStripeWebhook) {
-    issues.push({
-      key: "STRIPE_*",
-      message:
-        "Set both STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET, or neither — " +
-        "with only one of them, invoices can be paid but never marked as paid (or vice versa)",
-    });
-  }
-
-  const hasResendKey = !!process.env.RESEND_API_KEY?.trim();
-  const hasEmailFrom = !!process.env.EMAIL_FROM?.trim();
-  if (hasResendKey !== hasEmailFrom) {
-    issues.push({
-      key: "RESEND_*",
-      message: "Set both RESEND_API_KEY and EMAIL_FROM, or neither",
-    });
+  // Half-configured integrations are the worst state to be in: the feature
+  // looks available but cannot complete. The integration registry knows which
+  // variables belong together, so this stays in step with it automatically
+  // rather than repeating the pairings here.
+  for (const { label, missing, partial } of allIntegrations()) {
+    if (partial) {
+      issues.push({
+        key: label,
+        message: `${label} is half-configured — set ${missing.join(" and ")}, or unset the others to turn the feature off`,
+      });
+    }
   }
 
   return issues;
@@ -80,12 +72,4 @@ export function validateEnv(): void {
     throw new Error(`Invalid environment configuration:\n${report}`);
   }
   console.warn(`[env] Configuration warnings:\n${report}`);
-}
-
-export function isStripeConfigured(): boolean {
-  return !!process.env.STRIPE_SECRET_KEY?.trim() && !!process.env.STRIPE_WEBHOOK_SECRET?.trim();
-}
-
-export function isEmailConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY?.trim() && !!process.env.EMAIL_FROM?.trim();
 }

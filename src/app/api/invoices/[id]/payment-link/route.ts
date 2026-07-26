@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized, notFound } from "@/lib/session";
 import { stripeEnabled, createCheckoutSession } from "@/lib/stripe";
+import { notConfiguredMessage } from "@/lib/config";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,10 +10,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!userId) return unauthorized();
 
   if (!stripeEnabled()) {
-    return NextResponse.json(
-      { error: "Stripe is not configured. Set STRIPE_SECRET_KEY to enable payment links." },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: notConfiguredMessage("stripe") }, { status: 503 });
   }
 
   const invoice = await prisma.invoice.findFirst({

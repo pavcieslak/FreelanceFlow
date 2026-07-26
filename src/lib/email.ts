@@ -1,7 +1,9 @@
+import { isConfigured } from "@/lib/config";
+
 const RESEND_API_BASE = "https://api.resend.com";
 
 export function emailEnabled(): boolean {
-  return !!process.env.RESEND_API_KEY && !!process.env.EMAIL_FROM;
+  return isConfigured("email");
 }
 
 export async function sendEmail(opts: {

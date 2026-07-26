@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 import PageShell from "@/components/layout/PageShell";
+import IntegrationsPanel from "@/components/integrations/IntegrationsPanel";
 import Button from "@/components/ui/Button";
 import { Settings } from "@/types";
 import { CURRENCIES, cn } from "@/lib/utils";
@@ -253,6 +254,11 @@ export default function SettingsPage() {
           </Field>
           <Msg msg={pwdMsg} />
           <Button onClick={savePassword} loading={savingPwd}>Update Password</Button>
+        </Section>
+
+        {/* Integrations */}
+        <Section title="Integrations">
+          <IntegrationsPanel />
         </Section>
       </div>
     </PageShell>
