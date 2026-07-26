@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized, notFound } from "@/lib/session";
 import { stripeEnabled, createCheckoutSession } from "@/lib/stripe";
 import { notConfiguredMessage } from "@/lib/config";
+import { invoiceTotals } from "@/lib/utils";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,8 +24,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Invoice is already paid" }, { status: 400 });
   }
 
-  const subtotal = invoice.items.reduce((s, item) => s + item.amount, 0);
-  const total = Math.round(subtotal * (1 + invoice.taxRate / 100) * 100) / 100;
+  const { total } = invoiceTotals(invoice.items, invoice.taxRate);
   if (total <= 0) {
     return NextResponse.json(
       { error: "Add line items before creating a payment link" },

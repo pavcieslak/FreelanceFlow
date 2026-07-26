@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PDFViewer, Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 import { Invoice, Settings } from "@/types";
+import { invoiceTotals } from "@/lib/utils";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: "Helvetica", fontSize: 10, color: "#1e293b", backgroundColor: "#ffffff" },
@@ -34,9 +35,10 @@ function formatMoney(amount: number, currency = "USD") {
 }
 
 function InvoicePDF({ invoice, settings }: { invoice: Invoice; settings: Settings | null }) {
-  const subtotal = (invoice.items ?? []).reduce((s, i) => s + i.amount, 0);
-  const taxAmount = Math.round(subtotal * ((invoice.taxRate ?? 0) / 100) * 100) / 100;
-  const total = subtotal + taxAmount;
+  const { subtotal, taxAmount, total } = invoiceTotals(
+    invoice.items ?? [],
+    invoice.taxRate ?? 0
+  );
 
   return (
     <Document>
