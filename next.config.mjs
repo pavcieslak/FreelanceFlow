@@ -21,15 +21,6 @@ function getAppVersion() {
 // 'unsafe-inline'/'unsafe-eval' in script-src are required by Next.js's runtime
 // (inline bootstrap + hydration payloads). Tightening this further needs
 // nonce-based CSP wired through a custom document.
-const isProd = process.env.NODE_ENV === "production";
-
-// The editor previews of VS Code / Codespaces render the app inside an iframe.
-// Denying every ancestor there just shows a blank pane, so development allows
-// those embedders. Production keeps the hard 'none'.
-const FRAME_ANCESTORS = isProd
-  ? "frame-ancestors 'none'"
-  : "frame-ancestors 'self' https://*.github.dev https://*.app.github.dev vscode-webview:";
-
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -39,29 +30,39 @@ const CSP = [
   // Stripe Checkout redirects out to stripe.com; API calls stay same-origin.
   "connect-src 'self' https://api.stripe.com",
   "form-action 'self' https://checkout.stripe.com",
-  FRAME_ANCESTORS,
+  "frame-ancestors 'none'",
   "base-uri 'self'",
   "object-src 'none'",
 ].join("; ");
 
-const SECURITY_HEADERS = [
+// Browser-hardening headers are production-only. They exist to constrain a
+// deployed origin, and in development each one breaks a dev-server feature
+// instead:
+//
+//   CSP     — connect-src 'self' blocks the hot-reload socket whenever the page
+//             origin and the socket origin differ, which is the normal case in
+//             Codespaces (page on https://<name>-3000.app.github.dev, socket on
+//             localhost). That reads as "live reload is dead".
+//   HSTS    — sent over plain-HTTP localhost it pins the browser to
+//             https://localhost for two years, for every project on that port.
+//   XFO     — DENY blanks out the editor's built-in browser preview.
+//
+// Serving them in dev buys no safety: the dev server is bound to a local port,
+// and the deployed app is a separate production build.
+const HARDENING_HEADERS = [
   { key: "Content-Security-Policy", value: CSP },
+  { key: "X-Frame-Options", value: "DENY" },
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
+  },
+];
+
+const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  // X-Frame-Options has no allow-list equivalent to frame-ancestors, so in
-  // development it is omitted entirely rather than silently overriding the CSP
-  // above. HSTS is likewise production-only: sent over plain-HTTP localhost it
-  // pins the browser to https://localhost for every other project on that port.
-  ...(isProd
-    ? [
-        { key: "X-Frame-Options", value: "DENY" },
-        {
-          key: "Strict-Transport-Security",
-          value: "max-age=63072000; includeSubDomains; preload",
-        },
-      ]
-    : []),
+  ...(process.env.NODE_ENV === "production" ? HARDENING_HEADERS : []),
 ];
 
 /** @type {import('next').NextConfig} */
