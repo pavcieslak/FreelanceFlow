@@ -91,6 +91,8 @@ so a broken setup shows up as failing pages rather than a failed boot:
 | `/api/health` says `"database":"down"` | `DATABASE_URL` unset or Postgres not running | `docker compose up -d db`, check `.env` |
 | `prisma migrate deploy` → "Environment variable not found: DATABASE_URL" | Values are in `.env.local`; the Prisma CLI only reads `.env` | Use `.env` |
 | Sign-in redirects to an unreachable `localhost:3000` in a Codespace | `NEXTAUTH_URL` pinned to localhost | Set it to `https://<codespace>-3000.app.github.dev` |
+| `Unknown field 'passwordChangedAt' for select statement on model 'User'` | Generated Prisma client is older than `schema.prisma` | `npx prisma generate` (now automatic via `predev`) |
+| Warning `DATABASE_URL must be a PostgreSQL connection string`, or migrations succeed but the app still sees no data | A leftover `.env.local` sets `DATABASE_URL`. Next.js prefers it over `.env`, the Prisma CLI ignores it, so app and migrations use different databases | Remove the `DATABASE_URL` line from `.env.local` |
 | Blank pane in the editor's built-in browser preview | `frame-ancestors`/`X-Frame-Options` blocked the iframe | Fixed in development; open the port in a real browser tab |
 
 ## Migrating data from the old single-tenant SQLite version

@@ -17,7 +17,23 @@ npm ci
 # Both Next.js and the Prisma CLI must see these values. Next.js reads
 # .env.local *and* .env, but the Prisma CLI only reads .env — so .env is the
 # file that works for both, and the one this script writes.
+#
+# That split is also a trap worth naming: Next.js gives .env.local *precedence*
+# over .env. A leftover .env.local from the pre-Postgres version therefore wins
+# in the running app while `prisma migrate deploy` still reads .env, so
+# migrations land in Postgres while the app queries the old SQLite URL.
 # ---------------------------------------------------------------------------
+if [ -f .env.local ] && grep -qE '^\s*DATABASE_URL\s*=' .env.local; then
+  echo
+  echo "!! .env.local sets DATABASE_URL, which overrides .env in Next.js but is"
+  echo "!! invisible to the Prisma CLI. Migrations and the app would use"
+  echo "!! different databases. Current value:"
+  echo "!!   $(grep -E '^\s*DATABASE_URL\s*=' .env.local | head -1)"
+  echo "!! Remove that line (keep other overrides) and re-run: npm run setup"
+  echo
+  exit 1
+fi
+
 if [ -f .env ]; then
   echo "==> .env already exists, leaving it alone"
 else
