@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized } from "@/lib/session";
+import { isConfigured, notConfiguredMessage } from "@/lib/config";
 
 const CLOCKIFY_API_BASE = "https://api.clockify.me/api/v1";
 
@@ -254,6 +255,10 @@ export async function GET() {
   const userId = await getUserId();
   if (!userId) return unauthorized();
 
+  if (!isConfigured("clockify")) {
+    return NextResponse.json({ error: notConfiguredMessage("clockify") }, { status: 503 });
+  }
+
   try {
     const { apiKey, workspaceId } = getClockifyConfig();
     const invoices = await fetchAllClockifyInvoices(workspaceId, apiKey);
@@ -293,6 +298,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const userId = await getUserId();
   if (!userId) return unauthorized();
+
+  if (!isConfigured("clockify")) {
+    return NextResponse.json({ error: notConfiguredMessage("clockify") }, { status: 503 });
+  }
 
   try {
     const { apiKey, workspaceId } = getClockifyConfig();

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized, notFound } from "@/lib/session";
 import { emailEnabled, sendEmail, renderInvoiceEmail } from "@/lib/email";
 import { stripeEnabled, createCheckoutSession } from "@/lib/stripe";
+import { notConfiguredMessage } from "@/lib/config";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,13 +12,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!userId) return unauthorized();
 
   if (!emailEnabled()) {
-    return NextResponse.json(
-      {
-        error:
-          "Email sending is not configured. Set RESEND_API_KEY and EMAIL_FROM to enable it.",
-      },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: notConfiguredMessage("email") }, { status: 503 });
   }
 
   const invoice = await prisma.invoice.findFirst({

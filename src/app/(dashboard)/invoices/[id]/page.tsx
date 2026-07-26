@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useIntegrations } from "@/components/integrations/useIntegrations";
 import { Plus, Trash2, ArrowLeft, Download, Clock, Send, Link2, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -35,6 +36,23 @@ export default function InvoiceEditorPage() {
   const [linking, setLinking] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+
+  // Features that depend on optional integrations are disabled rather than
+  // left to fail on click; Settings › Integrations says what to set.
+  const { available, get } = useIntegrations();
+  const stripeReady = available("stripe");
+  const emailReady = available("email");
+
+  function unavailableHint(id: "stripe" | "email"): string {
+    const info = get(id);
+    if (!info) return "Not configured — see Settings › Integrations";
+    return `${info.label} is not configured. ${info.fallback} Set ${info.missing.join(" and ")} to enable it.`;
+  }
+
+  const unavailable = [
+    ...(stripeReady ? [] : ["payment links"]),
+    ...(emailReady ? [] : ["emailing invoices"]),
+  ];
   const [importOpen, setImportOpen] = useState(false);
 
   // Editable fields
@@ -182,11 +200,25 @@ export default function InvoiceEditorPage() {
           <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
             <Clock size={14} /> Import Time
           </Button>
-          <Button variant="secondary" size="sm" onClick={handlePaymentLink} loading={linking}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handlePaymentLink}
+            loading={linking}
+            disabled={!stripeReady}
+            title={stripeReady ? undefined : unavailableHint("stripe")}
+          >
             {linkCopied ? <Check size={14} /> : <Link2 size={14} />}
             {linkCopied ? "Copied" : "Payment Link"}
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleSend} loading={sending}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleSend}
+            loading={sending}
+            disabled={!emailReady}
+            title={emailReady ? undefined : unavailableHint("email")}
+          >
             <Send size={14} /> Send
           </Button>
           <Link href={`/invoices/${id}/pdf`} target="_blank"
@@ -202,6 +234,17 @@ export default function InvoiceEditorPage() {
           <Button onClick={() => save()} loading={saving} size="sm">Save</Button>
         </div>
       </div>
+
+      {unavailable.length > 0 && (
+        <div className="mx-4 md:mx-6 mt-4 rounded border border-border bg-surface px-3 py-2 text-sm text-text-muted">
+          {unavailable.join(" and ")} {unavailable.length > 1 ? "are" : "is"} unavailable
+          because the required integration is not configured. You can still export a
+          PDF and mark the invoice paid by hand.{" "}
+          <Link href="/settings" className="text-accent hover:underline">
+            Configure in Settings
+          </Link>
+        </div>
+      )}
 
       {feedback && (
         <div

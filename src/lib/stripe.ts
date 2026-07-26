@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { isConfigured } from "@/lib/config";
 
 /**
  * Stripe Checkout integration for invoice payment links.
@@ -17,7 +18,10 @@ import { createHmac, timingSafeEqual } from "crypto";
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 
 export function stripeEnabled(): boolean {
-  return !!process.env.STRIPE_SECRET_KEY;
+  // Deliberately also requires STRIPE_WEBHOOK_SECRET (see lib/config.ts): with
+  // only the API key, payment links work but nothing ever marks the invoice
+  // paid, which is worse than the feature being off.
+  return isConfigured("stripe");
 }
 
 export function appUrl(): string {
