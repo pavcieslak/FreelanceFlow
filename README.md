@@ -131,6 +131,26 @@ variables are still missing.
 | Stripe payment links + auto-paid webhook | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
 | Invoice email sending | `RESEND_API_KEY`, `EMAIL_FROM` |
 | Clockify invoice import | `CLOCKIFY_API_KEY`, `CLOCKIFY_WORKSPACE_ID` |
+| Sign in / register with Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_ALLOWED_EMAILS` |
+
+### Google sign-in
+
+Create an OAuth client (type "Web application") in the Google Cloud console and
+set its authorised redirect URI to `<APP_URL>/api/auth/callback/google`. Then
+set all three variables and restart; a "Sign in with Google" button appears on
+the sign-in and registration pages once the provider is live.
+
+`GOOGLE_ALLOWED_EMAILS` is a comma-separated list and is **required**, because
+it is the entire authorisation model. An address on the list may sign in, and
+gets an account created on first use; an address off it is refused. Without the
+list, enabling Google would turn any reachable instance into an open signup
+page — so the provider simply is not registered until it is set, and an empty
+list denies everyone rather than allowing everyone.
+
+Signing in with Google using an address that already has a password account
+links the two, and afterwards either method signs into that one account. Linking
+only happens on an address Google reports as verified. An account created
+through Google has no password until you set one in Settings.
 
 Each integration is **all or nothing** — it stays off until every one of its
 variables is set. Half-configured is the worst state to be in: a Stripe secret

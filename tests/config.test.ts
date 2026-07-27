@@ -1,9 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { integrationStatus, isConfigured, allIntegrations } from "@/lib/config";
+import {
+  integrationStatus,
+  isConfigured,
+  allIntegrations,
+  isGoogleEmailAllowed,
+  googleAllowedEmails,
+} from "@/lib/config";
 
 const STRIPE_VARS = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"];
 const EMAIL_VARS = ["RESEND_API_KEY", "EMAIL_FROM"];
-const ALL_VARS = [...STRIPE_VARS, ...EMAIL_VARS, "CLOCKIFY_API_KEY", "CLOCKIFY_WORKSPACE_ID"];
+const GOOGLE_VARS = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_ALLOWED_EMAILS"];
+const ALL_VARS = [
+  ...STRIPE_VARS,
+  ...EMAIL_VARS,
+  ...GOOGLE_VARS,
+  "CLOCKIFY_API_KEY",
+  "CLOCKIFY_WORKSPACE_ID",
+];
 
 let saved: Record<string, string | undefined>;
 
@@ -68,5 +81,54 @@ describe("integration configuration", () => {
     const serialised = JSON.stringify(allIntegrations());
     expect(serialised).not.toContain("sk_test_supersecret");
     expect(serialised).toContain("STRIPE_WEBHOOK_SECRET");
+  });
+});
+
+describe("google sign-in allowlist", () => {
+  const enable = (allowed: string) => {
+    process.env.GOOGLE_CLIENT_ID = "client-id";
+    process.env.GOOGLE_CLIENT_SECRET = "client-secret";
+    process.env.GOOGLE_ALLOWED_EMAILS = allowed;
+  };
+
+  it("counts as configured only with an allowlist present", () => {
+    process.env.GOOGLE_CLIENT_ID = "client-id";
+    process.env.GOOGLE_CLIENT_SECRET = "client-secret";
+
+    // Credentials without an allowlist would mean anyone with a Google account
+    // could sign in, so this must not read as configured.
+    expect(isConfigured("google")).toBe(false);
+    expect(integrationStatus("google").missing).toEqual(["GOOGLE_ALLOWED_EMAILS"]);
+  });
+
+  it("denies everyone when the integration is off", () => {
+    expect(isGoogleEmailAllowed("me@example.com")).toBe(false);
+  });
+
+  it("allows only listed addresses", () => {
+    enable("me@example.com, team@example.com");
+    expect(isGoogleEmailAllowed("me@example.com")).toBe(true);
+    expect(isGoogleEmailAllowed("team@example.com")).toBe(true);
+    expect(isGoogleEmailAllowed("stranger@example.com")).toBe(false);
+  });
+
+  it("matches regardless of case or surrounding spaces", () => {
+    enable("  Me@Example.COM  ");
+    expect(isGoogleEmailAllowed("me@example.com")).toBe(true);
+    expect(isGoogleEmailAllowed(" ME@EXAMPLE.COM ")).toBe(true);
+  });
+
+  it("never treats an empty or comma-only list as allow-all", () => {
+    enable(" , , ");
+    expect(googleAllowedEmails()).toEqual([]);
+    expect(isGoogleEmailAllowed("anyone@example.com")).toBe(false);
+    expect(isGoogleEmailAllowed("")).toBe(false);
+  });
+
+  it("does not match a partial or lookalike address", () => {
+    enable("me@example.com");
+    expect(isGoogleEmailAllowed("me@example.com.attacker.test")).toBe(false);
+    expect(isGoogleEmailAllowed("notme@example.com")).toBe(false);
+    expect(isGoogleEmailAllowed("me@example.co")).toBe(false);
   });
 });
