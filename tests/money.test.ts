@@ -4,6 +4,8 @@ import {
   generateInvoiceNumber,
   nextInvoiceNumberFrom,
   formatDuration,
+  invoiceTotals,
+  roundMoney,
 } from "@/lib/utils";
 
 describe("calculateAmount", () => {
@@ -80,5 +82,49 @@ describe("formatDuration", () => {
 
   it("keeps counting hours past a day instead of wrapping", () => {
     expect(formatDuration(90000)).toBe("25:00:00");
+  });
+});
+
+describe("invoiceTotals", () => {
+  const items = (...amounts: number[]) => amounts.map((amount) => ({ amount }));
+
+  it("adds up exactly: subtotal + tax === total", () => {
+    // The regression: this subtotal at 25% gives 2375.58 when tax is rounded
+    // and added, but 2375.57 when the grossed-up figure is rounded. The
+    // invoice, the PDF and the payment link must agree on one of them.
+    const { subtotal, taxAmount, total } = invoiceTotals(items(1900.46), 25);
+    expect(subtotal).toBe(1900.46);
+    expect(taxAmount).toBe(475.12);
+    expect(total).toBe(2375.58);
+    expect(roundMoney(subtotal + taxAmount)).toBe(total);
+  });
+
+  it("keeps subtotal + tax === total across many rates and amounts", () => {
+    for (const rate of [0, 5, 7.5, 19, 20, 21, 23, 25]) {
+      for (let cents = 1; cents < 4000; cents += 7) {
+        const { subtotal, taxAmount, total } = invoiceTotals(items(cents / 100), rate);
+        expect(roundMoney(subtotal + taxAmount)).toBe(total);
+      }
+    }
+  });
+
+  it("never emits more than two decimal places", () => {
+    const { subtotal, taxAmount, total } = invoiceTotals(items(33.33, 33.33, 33.34), 19);
+    for (const value of [subtotal, taxAmount, total]) {
+      expect(Number.isInteger(Math.round(value * 100))).toBe(true);
+      expect(value).toBe(roundMoney(value));
+    }
+  });
+
+  it("treats a zero tax rate as no tax", () => {
+    expect(invoiceTotals(items(10, 20), 0)).toEqual({
+      subtotal: 30,
+      taxAmount: 0,
+      total: 30,
+    });
+  });
+
+  it("handles an empty invoice", () => {
+    expect(invoiceTotals([], 20)).toEqual({ subtotal: 0, taxAmount: 0, total: 0 });
   });
 });

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized } from "@/lib/session";
-import { calculateAmount } from "@/lib/utils";
+import { calculateAmount, invoiceTotals, roundMoney } from "@/lib/utils";
 import { startOfMonth, startOfWeek, subMonths } from "date-fns";
 
 export async function GET() {
@@ -102,9 +102,8 @@ export async function GET() {
 
   const outstanding: Record<string, number> = {};
   for (const inv of openInvoices) {
-    const subtotal = inv.items.reduce((s, item) => s + item.amount, 0);
-    const total = subtotal * (1 + inv.taxRate / 100);
-    outstanding[inv.currency] = (outstanding[inv.currency] ?? 0) + total;
+    const { total } = invoiceTotals(inv.items, inv.taxRate);
+    outstanding[inv.currency] = roundMoney((outstanding[inv.currency] ?? 0) + total);
   }
 
   const monthlyHistory = [5, 4, 3, 2, 1, 0].map((n) => {

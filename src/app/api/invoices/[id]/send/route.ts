@@ -5,6 +5,7 @@ import { getUserId, unauthorized, notFound } from "@/lib/session";
 import { emailEnabled, sendEmail, renderInvoiceEmail } from "@/lib/email";
 import { stripeEnabled, createCheckoutSession } from "@/lib/stripe";
 import { notConfiguredMessage } from "@/lib/config";
+import { invoiceTotals } from "@/lib/utils";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,8 +39,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const businessName =
     settings?.businessName ?? settings?.fullName ?? "Your freelancer";
 
-  const subtotal = invoice.items.reduce((s, item) => s + item.amount, 0);
-  const total = Math.round(subtotal * (1 + invoice.taxRate / 100) * 100) / 100;
+  const { subtotal, total } = invoiceTotals(invoice.items, invoice.taxRate);
 
   // Attach a Stripe payment link when possible, but never block sending on it
   let paymentUrl = invoice.paymentUrl;

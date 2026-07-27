@@ -9,6 +9,7 @@
     "setup": "bash .devcontainer/setup.sh",
     "predev": "prisma generate",
     "dev": "next dev",
+    "prebuild": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

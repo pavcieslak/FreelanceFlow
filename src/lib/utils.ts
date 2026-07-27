@@ -19,7 +19,41 @@ export function calculateAmount(
   durationSeconds: number,
   hourlyRate: number
 ): number {
-  return Math.round((durationSeconds / 3600) * hourlyRate * 100) / 100;
+  return roundMoney((durationSeconds / 3600) * hourlyRate);
+}
+
+/**
+ * Rounds to whole cents. Amounts are stored as floats, so every computed
+ * money value goes through this before being displayed, stored or charged —
+ * that is what keeps float noise from reaching a total.
+ */
+export function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export interface InvoiceTotals {
+  subtotal: number;
+  taxAmount: number;
+  total: number;
+}
+
+/**
+ * The one place invoice totals are computed.
+ *
+ * Tax is rounded to cents and then added, rather than rounding the grossed-up
+ * figure, so the subtotal, tax and total shown on an invoice always add up
+ * exactly. The two forms are not interchangeable: at a 25% rate a subtotal of
+ * 1900.46 gives 2375.58 this way and 2375.57 the other, and this used to be
+ * computed both ways in different places — meaning the invoice a client read
+ * could state a different amount than the payment link charged them.
+ */
+export function invoiceTotals(
+  items: Array<{ amount: number }>,
+  taxRate: number
+): InvoiceTotals {
+  const subtotal = roundMoney(items.reduce((sum, item) => sum + item.amount, 0));
+  const taxAmount = roundMoney(subtotal * (taxRate / 100));
+  return { subtotal, taxAmount, total: roundMoney(subtotal + taxAmount) };
 }
 
 export function formatDate(dateStr: string): string {

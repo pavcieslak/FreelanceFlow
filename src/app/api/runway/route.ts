@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserId, unauthorized } from "@/lib/session";
+import { invoiceTotals, roundMoney } from "@/lib/utils";
 import { startOfMonth, subMonths, endOfMonth } from "date-fns";
 
 export async function GET() {
@@ -56,10 +57,12 @@ export async function GET() {
     where: { userId, status: "SENT" },
     include: { items: true },
   });
-  const pendingRevenue = pendingInvoices.reduce((sum, inv) => {
-    const subtotal = inv.items.reduce((s, item) => s + item.amount, 0);
-    return sum + subtotal * (1 + inv.taxRate / 100);
-  }, 0);
+  const pendingRevenue = roundMoney(
+    pendingInvoices.reduce(
+      (sum, inv) => sum + invoiceTotals(inv.items, inv.taxRate).total,
+      0
+    )
+  );
 
   // Runway calculation
   const runway = monthlyExpenses > 0 ? pendingRevenue / monthlyExpenses : null;

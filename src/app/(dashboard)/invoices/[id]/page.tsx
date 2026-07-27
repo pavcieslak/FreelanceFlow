@@ -9,7 +9,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import ImportTimeModal from "@/components/invoices/ImportTimeModal";
 import { Invoice, InvoiceItem, Settings } from "@/types";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn, invoiceTotals, roundMoney } from "@/lib/utils";
 
 interface EditableItem {
   id?: string;
@@ -97,7 +97,7 @@ export default function InvoiceEditorPage() {
       const next = [...prev];
       const item = { ...next[index], [field]: value };
       if (field === "quantity" || field === "unitPrice") {
-        item.amount = Math.round(Number(item.quantity) * Number(item.unitPrice) * 100) / 100;
+        item.amount = roundMoney(Number(item.quantity) * Number(item.unitPrice));
       }
       next[index] = item;
       return next;
@@ -112,9 +112,7 @@ export default function InvoiceEditorPage() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  const subtotal = items.reduce((s, i) => s + i.amount, 0);
-  const taxAmount = Math.round(subtotal * (taxRate / 100) * 100) / 100;
-  const total = subtotal + taxAmount;
+  const { subtotal, taxAmount, total } = invoiceTotals(items, taxRate);
 
   async function save(overrideStatus?: string) {
     setSaving(true);
