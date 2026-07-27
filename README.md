@@ -193,7 +193,15 @@ npm run build     # production build
 ```
 
 CI runs typecheck, tests and a build against a real PostgreSQL service on every
-push (`.github/workflows/ci.yml`).
+push (`.github/workflows/ci.yml`), plus a check that every migration matches
+`schema.prisma` — a schema edit that was never turned into a migration builds
+fine and only fails at runtime, so it is worth catching early.
+
+`tests/routeAuth.test.ts` guards the API surface structurally: every route
+under `src/app/api` must authenticate unless it is on an explicit public
+allowlist with a stated reason, and any route querying a tenant-owned model
+must constrain `userId`. Adding a route that forgets either fails the suite
+rather than quietly exposing one account's data to another.
 
 ## Stack
 
