@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -117,6 +118,8 @@ export default function RegisterPage() {
             )}
             {loading ? "Creating account…" : "Create account"}
           </button>
+
+          <GoogleSignInButton label="Sign up with Google" />
 
           <p className="text-sm text-text-muted text-center">
             Already have an account?{" "}

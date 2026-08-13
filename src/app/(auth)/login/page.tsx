@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +12,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // A rejected Google sign-in comes back here as ?error=..., which would
+  // otherwise look like the page simply reloaded itself. Read from the URL
+  // directly rather than useSearchParams, which would force this static page
+  // into a Suspense boundary.
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("error");
+    if (!reason) return;
+    setError(
+      reason === "AccessDenied"
+        ? "That Google account is not allowed to sign in on this instance."
+        : "Google sign-in failed. Try again, or use your email and password."
+    );
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +112,8 @@ export default function LoginPage() {
             )}
             {loading ? "Signing in…" : "Sign in"}
           </button>
+
+          <GoogleSignInButton label="Sign in with Google" />
 
           <p className="text-sm text-text-muted text-center">
             New here?{" "}

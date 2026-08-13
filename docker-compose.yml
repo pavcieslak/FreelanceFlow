@@ -36,8 +36,45 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      CLOCKIFY_API_KEY: ${CLOCKIFY_API_KEY:-}
+      CLOCKIFY_WORKSPACE_ID: ${CLOCKIFY_WORKSPACE_ID:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_ALLOWED_EMAILS: ${GOOGLE_ALLOWED_EMAILS:-}
     ports:
       - "${APP_PORT:-3000}:3000"
+
+  # Dumps the database on a schedule. The dumps land in ./backups on the host,
+  # so they are visible and copyable without going through Docker — the volume
+  # holding the database is otherwise the only copy of every invoice.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-projectflow}
+      POSTGRES_DB: ${POSTGRES_DB:-projectflow}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-projectflow}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_POST_HOOK: ${BACKUP_POST_HOOK:-}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    # Takes one dump at startup, then every BACKUP_INTERVAL_SECONDS. A failed
+    # dump is logged and the loop continues, so one bad night doesn't stop
+    # every backup after it — check `docker compose logs backup` if you need to
+    # know a dump ran.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          /scripts/backup.sh || echo "[backup] dump failed, retrying next cycle" >&2
+          sleep "$$BACKUP_INTERVAL_SECONDS"
+        done
 
 volumes:
   pgdata:

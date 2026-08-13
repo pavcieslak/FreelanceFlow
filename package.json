@@ -20,6 +20,7 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretypecheck": "prisma generate",
     "typecheck": "tsc --noEmit",
     "user:set": "npm run --silent ts -- scripts/setUserPassword.ts",
     "ts": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"CommonJS\"}' node --env-file-if-exists=.env --env-file-if-exists=.env.local -r ts-node/register"

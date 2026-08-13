@@ -26,6 +26,7 @@ type ProfitabilityData = {
   period: string;
   projects: ProjectRow[];
   summary: {
+    currency: string;
     totalDuration: number;
     billableDuration: number;
     totalEarned: number;
@@ -175,7 +176,7 @@ export default function ProfitabilityPage() {
               label="Total earned"
               value={
                 data.summary.totalEarned > 0
-                  ? `$${data.summary.totalEarned.toFixed(0)}`
+                  ? formatCurrency(data.summary.totalEarned, data.summary.currency)
                   : "—"
               }
               sub="billable value"
@@ -184,7 +185,7 @@ export default function ProfitabilityPage() {
               label="Effective rate"
               value={
                 data.summary.effectiveRate !== null
-                  ? `$${data.summary.effectiveRate.toFixed(0)}/hr`
+                  ? `${formatCurrency(data.summary.effectiveRate, data.summary.currency)}/hr`
                   : "—"
               }
               sub="across all projects"

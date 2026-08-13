@@ -93,6 +93,28 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   });
   if (!existing) return notFound();
 
-  await prisma.invoice.delete({ where: { id: id } });
+  // Hours billed on this invoice go back to unbilled. Without this, deleting an
+  // invoice strands them: the entries stay flagged `invoiced`, so no later
+  // invoice can pick them up and the work can never be billed again.
+  const items = await prisma.invoiceItem.findMany({
+    where: { invoiceId: id, timeEntryId: { not: null } },
+    select: { timeEntryId: true },
+  });
+  const entryIds = items.map((i) => i.timeEntryId!);
+
+  // One transaction, so a failed delete cannot leave the entries un-marked
+  // against an invoice that still exists.
+  await prisma.$transaction([
+    ...(entryIds.length
+      ? [
+          prisma.timeEntry.updateMany({
+            where: { id: { in: entryIds }, userId },
+            data: { invoiced: false },
+          }),
+        ]
+      : []),
+    prisma.invoice.delete({ where: { id: id } }),
+  ]);
+
   return NextResponse.json({ success: true });
 }
