@@ -13,7 +13,7 @@
  * render `allIntegrations()`.
  */
 
-export type IntegrationId = "email" | "stripe" | "clockify";
+export type IntegrationId = "email" | "stripe" | "clockify" | "google";
 
 interface IntegrationSpec {
   id: IntegrationId;
@@ -47,6 +47,18 @@ const SPECS: readonly IntegrationSpec[] = [
     vars: ["CLOCKIFY_API_KEY", "CLOCKIFY_WORKSPACE_ID"],
     enables: "Importing existing invoices from a Clockify workspace.",
     fallback: "Create invoices directly in the app.",
+  },
+  {
+    id: "google",
+    label: "Sign in with Google",
+    // GOOGLE_ALLOWED_EMAILS is required, not optional, on purpose. Enabling the
+    // provider without an allowlist would let anyone with a Google account
+    // create an account on this instance — an open signup page for whoever can
+    // reach the URL. Making it a required variable means that state cannot be
+    // reached by configuring things halfway.
+    vars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_ALLOWED_EMAILS"],
+    enables: "Registering and signing in with a Google account, for the listed addresses.",
+    fallback: "Sign in with an email address and password.",
   },
 ];
 
@@ -87,6 +99,27 @@ export function integrationStatus(id: IntegrationId): IntegrationStatus {
 
 export function isConfigured(id: IntegrationId): boolean {
   return integrationStatus(id).configured;
+}
+
+/**
+ * Addresses permitted to sign in with Google, lowercased.
+ *
+ * The list is the whole authorisation model for Google sign-in: an address on
+ * it may sign in and, if it has no account yet, gets one created; an address
+ * off it is refused outright. Returns empty when the integration is off, and
+ * an empty list denies everyone — never "allow all", which is the failure mode
+ * that would matter here.
+ */
+export function googleAllowedEmails(): string[] {
+  return (process.env.GOOGLE_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isGoogleEmailAllowed(email: string): boolean {
+  if (!isConfigured("google")) return false;
+  return googleAllowedEmails().includes(email.trim().toLowerCase());
 }
 
 /**

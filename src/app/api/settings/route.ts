@@ -19,9 +19,6 @@ export async function PUT(req: NextRequest) {
 
   // Handle password change
   if (body.newPassword) {
-    if (!body.currentPassword) {
-      return NextResponse.json({ error: "Current password required" }, { status: 400 });
-    }
     if (body.newPassword.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters" },
@@ -31,8 +28,19 @@ export async function PUT(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const valid = await bcrypt.compare(body.currentPassword, user.password);
-    if (!valid) return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+    // An account created through Google has no password yet, so there is
+    // nothing to confirm against — this sets the first one, which is safe
+    // because reaching here already required a valid session. Accounts that do
+    // have a password must still prove they know it.
+    if (user.password) {
+      if (!body.currentPassword) {
+        return NextResponse.json({ error: "Current password required" }, { status: 400 });
+      }
+      const valid = await bcrypt.compare(body.currentPassword, user.password);
+      if (!valid) {
+        return NextResponse.json({ error: "Current password is incorrect" }, { status: 400 });
+      }
+    }
 
     const hash = await bcrypt.hash(body.newPassword, 12);
     // Stamping passwordChangedAt drops every existing session, including this

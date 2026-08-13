@@ -10,7 +10,12 @@ datasource db {
 model User {
   id          String      @id @default(cuid())
   email       String      @unique
-  password    String
+  /// Null for accounts that only ever sign in with Google. Such an account can
+  /// gain a password later through the normal reset flow.
+  password    String?
+  /// Google's `sub` claim: stable for the lifetime of the account, unlike the
+  /// email address, so it is what a returning Google user is matched on.
+  googleId    String?     @unique
   name        String?
   createdAt   DateTime    @default(now())
   /// Bumped whenever the password changes. Sessions issued before this instant
