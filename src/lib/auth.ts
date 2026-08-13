@@ -21,8 +21,8 @@ const DUMMY_HASH = "$2a$12$C6UzMDM.H6dfI/f/IKcEeO.PjkVRxlQTMYRPQpx5H8kmMvBqXQ0Ru
  * pieces that need a database: credential verification and the check that a
  * session predates the account's last password change.
  *
- * Middleware deliberately uses only the edge-safe config — do not import this
- * module from middleware, or Prisma will fail to load in the Edge runtime.
+ * `src/proxy.ts` deliberately uses only the edge-safe config — do not import
+ * this module from there, or Prisma will fail to load in the Edge runtime.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,

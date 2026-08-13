@@ -6,11 +6,36 @@
  * sessions in production).
  */
 
+import { existsSync, readFileSync } from "node:fs";
 import { allIntegrations } from "@/lib/config";
 
 type EnvIssue = { key: string; message: string };
 
 const REQUIRED = ["DATABASE_URL", "NEXTAUTH_SECRET"] as const;
+
+/**
+ * Whether a `.env.local` on disk assigns `key`.
+ *
+ * Next.js reads `.env.local` in preference to `.env`, while the Prisma CLI
+ * reads only `.env`. A `DATABASE_URL` left behind in `.env.local` therefore
+ * points the app at one database and every migration at another, and the
+ * symptom — migrations that succeed against data the app cannot see — gives no
+ * hint about which file is responsible. When a value looks wrong it is worth
+ * saying where it most likely came from.
+ *
+ * Only the presence of the assignment is reported. The value is never read,
+ * so nothing here can put a password into a log line.
+ */
+function assignedInEnvLocal(key: string): boolean {
+  try {
+    if (!existsSync(".env.local")) return false;
+    const pattern = new RegExp(`^\\s*(export\\s+)?${key}\\s*=`, "m");
+    return pattern.test(readFileSync(".env.local", "utf8"));
+  } catch {
+    // Diagnostics must never be the reason startup fails.
+    return false;
+  }
+}
 
 function collectIssues(): EnvIssue[] {
   const issues: EnvIssue[] = [];
@@ -33,7 +58,12 @@ function collectIssues(): EnvIssue[] {
   if (dbUrl && !/^postgres(ql)?:\/\//.test(dbUrl)) {
     issues.push({
       key: "DATABASE_URL",
-      message: "DATABASE_URL must be a PostgreSQL connection string (this app no longer supports SQLite)",
+      message:
+        "DATABASE_URL must be a PostgreSQL connection string (this app no longer supports SQLite)" +
+        (assignedInEnvLocal("DATABASE_URL")
+          ? ". The value in use is most likely the one in .env.local, which Next.js " +
+            "prefers over .env — fix or delete that line, not the one in .env"
+          : ""),
     });
   }
 

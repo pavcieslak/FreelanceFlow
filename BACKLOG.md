@@ -75,9 +75,10 @@ płatności" tam, gdzie wymagane.
   `User.passwordChangedAt`.
 
   **Uwaga architektoniczna:** sprawdzenie `passwordChangedAt` wymaga zapytania
-  do bazy, więc żyje w `src/lib/auth.ts` (runtime Node). Middleware korzysta
+  do bazy, więc żyje w `src/lib/auth.ts` (runtime Node). `src/proxy.ts`
+  (dawniej `src/middleware.ts` — Next 16 zmienił nazwę konwencji) korzysta
   z `src/lib/auth.config.ts`, który nie może importować Prismy — działa
-  w Edge Runtime. Nie łącz tych dwóch plików: import Prismy do middleware
+  w Edge Runtime. Nie łącz tych dwóch plików: import Prismy do `proxy.ts`
   powoduje, że **każda** strona przekierowuje na `/login`.
 
 - **Opcjonalna data płatności faktury** (2026-07-24) — `Invoice.dueDate` jest
