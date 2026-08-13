@@ -197,12 +197,56 @@ git pull && docker compose up -d --build
   certificate automatically with a two-line config.
 - **Make sure your proxy overwrites `X-Forwarded-For`** rather than appending to
   it, otherwise clients can spoof it and bypass the login/signup rate limits.
-- **Back up the database.** The Docker volume is the only copy of your data:
-  `docker compose exec -T db pg_dump -U projectflow projectflow | gzip > backup-$(date +%F).sql.gz`,
-  ideally on a cron job with copies kept off the machine.
+- **Get the backups off the machine.** `docker compose up -d` starts a `backup`
+  service that dumps the database into `./backups` every 24 hours and keeps 14
+  days of dumps — see [Backups](#backups) below. Those dumps live on the same
+  disk as the database, so they cover a bad migration or a dropped table but not
+  a dead host. Set `BACKUP_POST_HOOK` to copy each dump somewhere else.
 - **Restrict signups if the instance is only for you.** `/register` is open to
   anyone who can reach it; put it behind your proxy or a firewall rule if the
   host is public.
+
+### Backups
+
+`docker compose up -d` starts a `backup` service alongside the app. It takes a
+dump immediately, then every `BACKUP_INTERVAL_SECONDS` (default 24h), writing
+gzipped SQL into `./backups` on the host and deleting dumps older than
+`BACKUP_RETENTION_DAYS` (default 14).
+
+Each dump is written under a `.partial` name and renamed into place only after
+`pg_dump` succeeds and the result passes a size check, so the directory never
+holds a truncated file that looks like a good backup.
+
+```bash
+docker compose logs backup            # confirm dumps are actually running
+ls -lh backups/                       # what you have
+docker compose run --rm backup /scripts/backup.sh   # dump right now
+```
+
+**Getting a copy off the machine.** `./backups` is on the same disk as the
+database, which covers a bad migration but not a dead host. `BACKUP_POST_HOOK`
+runs after each successful dump with the dump path as `$1`:
+
+```bash
+# in .env
+BACKUP_POST_HOOK=rclone copy "$1" remote:projectflow-backups
+```
+
+Any command works — `rclone`, `aws s3 cp`, `scp`, `restic`. The tool it names
+has to exist inside the `backup` container (the `postgres:16-alpine` image), so
+anything beyond `scp` means building a small image for it or running the copy
+from a host cron job against `./backups` instead.
+
+**Restoring.** Point `restore.sh` at a dump. It drops everything currently in
+the database first, so it asks for confirmation:
+
+```bash
+docker compose run --rm backup /scripts/restore.sh /backups/projectflow-20260813T030000Z.sql.gz
+docker compose restart app
+```
+
+Try a restore into a scratch database once, now, while nothing depends on it
+working. A backup nobody has ever restored is a guess.
 
 ## Development
 
