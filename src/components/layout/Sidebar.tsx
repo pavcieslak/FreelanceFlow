@@ -68,7 +68,7 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-4 h-16 border-b border-border shrink-0">
         {!collapsed && (
           <span className="font-bold text-text-primary text-lg tracking-tight">
-            ProjectFlow
+            FreelanceFlow
           </span>
         )}
         <button

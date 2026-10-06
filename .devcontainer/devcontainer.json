@@ -1,5 +1,5 @@
 {
-  "name": "ProjectFlow",
+  "name": "FreelanceFlow",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
@@ -7,7 +7,7 @@
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
-      "label": "ProjectFlow",
+      "label": "FreelanceFlow",
       "onAutoForward": "notify"
     }
   },

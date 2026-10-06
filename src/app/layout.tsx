@@ -3,7 +3,7 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 
 export const metadata: Metadata = {
-  title: "ProjectFlow",
+  title: "FreelanceFlow",
   description: "Time tracking, project profitability and invoicing for freelancers",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "ProjectFlow",
+    title: "FreelanceFlow",
   },
 };
 

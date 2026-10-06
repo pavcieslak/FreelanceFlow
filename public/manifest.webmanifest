@@ -1,6 +1,6 @@
 {
-  "name": "ProjectFlow",
-  "short_name": "ProjectFlow",
+  "name": "FreelanceFlow",
+  "short_name": "FreelanceFlow",
   "description": "Time tracking, project profitability and invoicing for freelancers",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -124,6 +124,6 @@ export function renderInvoiceEmail(opts: {
     </table>
     ${payButton}
     ${opts.notes ? `<p style="color:#6b7280;white-space:pre-line;">${escapeHtml(opts.notes)}</p>` : ""}
-    <p style="color:#9ca3af;font-size:12px;margin-top:32px;">Sent with ProjectFlow</p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:32px;">Sent with FreelanceFlow</p>
   </div>`;
 }

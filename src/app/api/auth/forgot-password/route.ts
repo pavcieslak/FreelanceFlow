@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
       await sendEmail({
         to: user.email,
-        subject: "Reset your ProjectFlow password",
+        subject: "Reset your FreelanceFlow password",
         html: renderResetEmail({
           resetUrl,
           expiresInMinutes: RESET_TOKEN_TTL_MINUTES,

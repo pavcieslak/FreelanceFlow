@@ -1,4 +1,4 @@
-# ProjectFlow
+# FreelanceFlow
 
 Time tracking, project profitability and invoicing for freelancers. Track your time,
 plan bookings, watch per-project profitability and financial runway, then turn tracked
@@ -167,7 +167,7 @@ The app ships as a Docker image with a standalone Next.js server. On an Ubuntu
 host with Docker installed:
 
 ```bash
-git clone <your-repo> projectflow && cd projectflow
+git clone https://github.com/pavcieslak/FreelanceFlow.git && cd FreelanceFlow
 
 # docker-compose.override.yml only exists for local dev — it publishes Postgres
 # to the host. Remove it on the server so the database stays private.
@@ -176,7 +176,7 @@ rm -f docker-compose.override.yml
 cat > .env <<'EOF'
 POSTGRES_PASSWORD=<a long random password>
 NEXTAUTH_SECRET=<openssl rand -base64 32>
-APP_URL=https://projectflow.yourdomain.com
+APP_URL=https://freelanceflow.yourdomain.com
 APP_PORT=3000
 EOF
 

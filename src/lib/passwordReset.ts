@@ -55,7 +55,7 @@ export function renderResetEmail(opts: { resetUrl: string; expiresInMinutes: num
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#111827;">
     <h2 style="margin-bottom:8px;">Reset your password</h2>
     <p style="color:#374151;">
-      We received a request to reset your ProjectFlow password. This link works
+      We received a request to reset your FreelanceFlow password. This link works
       once and expires in ${opts.expiresInMinutes} minutes.
     </p>
     <p style="margin:24px 0;">
@@ -71,6 +71,6 @@ export function renderResetEmail(opts: { resetUrl: string; expiresInMinutes: num
     <p style="color:#6b7280;font-size:13px;">
       Didn't request this? You can ignore this email — your password stays as it is.
     </p>
-    <p style="color:#9ca3af;font-size:12px;margin-top:32px;">Sent by ProjectFlow</p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:32px;">Sent by FreelanceFlow</p>
   </div>`;
 }
